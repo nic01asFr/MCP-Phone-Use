@@ -59,14 +59,35 @@ class ControlService : AccessibilityService() {
     }
 
     private fun dumpUi(): JSONObject {
-        val root = rootInActiveWindow
-            ?: return JSONObject().put("ok", false).put("error", "aucune fenetre active")
-        val nodes = JSONArray()
-        collectNodes(root, nodes, depth = 0, maxDepth = 12, maxNodes = 300)
-        return JSONObject().put("ok", true).put("tree", nodes)
+        // Lit TOUTES les fenetres visibles (utile en ecran scinde : deux apps ont
+        // chacune leur fenetre). rootInActiveWindow seul ne verrait que celle qui
+        // a le focus clavier/input, pas forcement les deux panneaux.
+        val visibleWindows = windows
+        if (visibleWindows.isNullOrEmpty()) {
+            val root = rootInActiveWindow
+                ?: return JSONObject().put("ok", false).put("error", "aucune fenetre active")
+            val nodes = JSONArray()
+            collectNodes(root, nodes, depth = 0, maxDepth = 12, maxNodes = 300, windowLabel = packageOf(root))
+            return JSONObject().put("ok", true).put("tree", nodes).put("windowCount", 1)
+        }
+
+        val allNodes = JSONArray()
+        var windowCount = 0
+        for (window in visibleWindows) {
+            val root = window.root ?: continue
+            windowCount++
+            val label = window.title?.toString()?.takeIf { it.isNotBlank() } ?: packageOf(root)
+            collectNodes(root, allNodes, depth = 0, maxDepth = 10, maxNodes = 150, windowLabel = label)
+        }
+        return JSONObject().put("ok", true).put("tree", allNodes).put("windowCount", windowCount)
     }
 
-    private fun collectNodes(node: AccessibilityNodeInfo, out: JSONArray, depth: Int, maxDepth: Int, maxNodes: Int) {
+    private fun packageOf(node: AccessibilityNodeInfo): String =
+        node.packageName?.toString() ?: "inconnu"
+
+    private fun collectNodes(
+        node: AccessibilityNodeInfo, out: JSONArray, depth: Int, maxDepth: Int, maxNodes: Int, windowLabel: String
+    ) {
         if (depth > maxDepth || out.length() >= maxNodes) return
         val bounds = android.graphics.Rect()
         node.getBoundsInScreen(bounds)
@@ -74,6 +95,7 @@ class ControlService : AccessibilityService() {
         if (!text.isNullOrBlank() || node.isClickable || node.isEditable) {
             out.put(
                 JSONObject()
+                    .put("window", windowLabel)
                     .put("text", text ?: "")
                     .put("className", node.className?.toString() ?: "")
                     .put("resourceId", node.viewIdResourceName ?: "")
@@ -84,7 +106,7 @@ class ControlService : AccessibilityService() {
         }
         for (i in 0 until node.childCount) {
             val child = node.getChild(i) ?: continue
-            collectNodes(child, out, depth + 1, maxDepth, maxNodes)
+            collectNodes(child, out, depth + 1, maxDepth, maxNodes, windowLabel)
             child.recycle()
         }
     }
@@ -151,6 +173,9 @@ class ControlService : AccessibilityService() {
             "back" -> GLOBAL_ACTION_BACK
             "home" -> GLOBAL_ACTION_HOME
             "recents" -> GLOBAL_ACTION_RECENTS
+            // Deprecie par Google depuis la refonte multi-fenetres (Android 12+) —
+            // comportement variable selon version/OEM, teste plutot que suppose fiable.
+            "split_screen" -> GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN
             else -> return JSONObject().put("ok", false).put("error", "touche inconnue: $key")
         }
         val ok = performGlobalAction(globalAction)
