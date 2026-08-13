@@ -75,3 +75,4 @@ Ce repo succède à un projet local ("MCP apk", dossier `device-agent-relay/` + 
 - [ ] Lien de téléchargement temporaire pour récupérer l'APK sur le téléphone
 - [ ] Enregistrement du Custom Connector côté réglages claude.ai
 - [ ] Validation bout-en-bout : get_screen / device_action réels depuis une session Claude
+Pod: nic01asfr / device-agent — cloné et opérationnel.
