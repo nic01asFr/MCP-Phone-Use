@@ -25,3 +25,6 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Gradle wrapper distribution telechargee localement (pas versionnee, dl a la volee)
+android-device-agent/.gradle/
