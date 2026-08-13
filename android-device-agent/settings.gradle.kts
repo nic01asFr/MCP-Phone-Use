@@ -14,3 +14,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "device-agent"
 include(":app")
+include(":installer")

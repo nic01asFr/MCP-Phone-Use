@@ -1,0 +1,3 @@
+<resources>
+    <style name="Theme.Installer" parent="Theme.MaterialComponents.DayNight.NoActionBar" />
+</resources>
