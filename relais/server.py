@@ -174,6 +174,26 @@ async def device_commands_result(request: Request) -> Response:
     ok = command_bus.submit_result(command_id, result)
     return JSONResponse({"ok": ok})
 
+
+
+@mcp.custom_route("/downloads/{filename}", methods=["GET", "HEAD"])
+async def download_file(request: Request) -> Response:
+    from starlette.responses import FileResponse, PlainTextResponse
+    import os
+
+    filename = request.path_params["filename"]
+    # anti path-traversal : nom de fichier simple uniquement
+    if "/" in filename or ".." in filename:
+        return PlainTextResponse("invalide", status_code=400)
+    download_dir = "/home/onyxia/work/download"
+    path = os.path.join(download_dir, filename)
+    if not os.path.isfile(path):
+        return PlainTextResponse("introuvable", status_code=404)
+    # FileResponse (Starlette) gere nativement les requetes Range (telechargements
+    # repris/partiels) — contrairement a python -m http.server, qui les ignore et
+    # peut faire "planter" un telechargement mobile en cours de route.
+    return FileResponse(path, media_type="application/vnd.android.package-archive", filename=filename)
+
 # --- Outils --------------------------------------------------------------
 # Placeholder de validation du pipeline OAuth. Les vrais outils
 # (get_screen, get_ui_tree, device_action, ...) arrivent une fois l\'app
