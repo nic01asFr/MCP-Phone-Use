@@ -4,19 +4,19 @@ plugins {
 }
 
 android {
-    namespace = "fr.nic01asfr.deviceagent"
-    compileSdk = 35
+    namespace = "fr.nicolaslaval.deviceagent"
+    compileSdk = 34
 
     defaultConfig {
-        applicationId = "fr.nic01asfr.deviceagent"
+        applicationId = "fr.nicolaslaval.deviceagent"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 34
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "0.1.0-enrollment"
     }
 
     buildTypes {
-        release {
+        debug {
             isMinifyEnabled = false
         }
     }
@@ -25,11 +25,9 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-
     kotlinOptions {
         jvmTarget = "17"
     }
-
     buildFeatures {
         viewBinding = true
     }
@@ -42,4 +40,6 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("org.json:json:20240303")
 }

@@ -3,57 +3,44 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="24dp">
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="device-agent"
-        android:textSize="22sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="4dp" />
+    android:padding="24dp"
+    android:gravity="center_vertical">
 
     <TextView
         android:id="@+id/statusText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Non connecte"
-        android:textSize="14sp"
-        android:layout_marginBottom="16dp" />
+        android:textSize="16sp"
+        android:layout_marginBottom="16dp"
+        android:text="Non enrole" />
 
     <EditText
-        android:id="@+id/serverUrlField"
+        android:id="@+id/serverUrlInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="URL du relais (https://...)"
         android:inputType="textUri" />
 
     <EditText
-        android:id="@+id/enrollmentCodeField"
+        android:id="@+id/enrollmentCodeInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Code d'enrolement"
-        android:layout_marginTop="8dp" />
+        android:layout_marginTop="8dp"
+        android:hint="Code d'enrolement" />
 
     <Button
         android:id="@+id/enrollButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Enroler cet appareil"
-        android:layout_marginTop="16dp" />
+        android:layout_marginTop="16dp"
+        android:text="Enroler" />
 
     <Button
         android:id="@+id/connectButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
         android:text="Connecter"
-        android:layout_marginTop="8dp" />
-
-    <Button
-        android:id="@+id/disconnectButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Deconnecter"
-        android:layout_marginTop="8dp" />
+        android:enabled="false" />
 
 </LinearLayout>
