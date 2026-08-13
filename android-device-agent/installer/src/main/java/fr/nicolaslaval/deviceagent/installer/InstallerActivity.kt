@@ -83,9 +83,30 @@ class InstallerActivity : AppCompatActivity() {
         val request = Request.Builder().url(url).build()
         http.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw RuntimeException("HTTP ${response.code}")
+            val expectedSize = response.body!!.contentLength()  // -1 si inconnue
             val file = File(cacheDir, "download.apk")
+            var written = 0L
             response.body!!.byteStream().use { input ->
-                file.outputStream().use { output -> input.copyTo(output) }
+                file.outputStream().use { output ->
+                    written = input.copyTo(output)
+                }
+            }
+            // Verification d'integrite : un telechargement mobile interrompu peut se
+            // terminer "sans exception" mais produire un fichier tronque — on le
+            // detecte explicitement plutot que de laisser PackageInstaller echouer
+            // avec un message opaque (INSTALL_PARSE_FAILED_NOT_APK).
+            if (expectedSize > 0 && written != expectedSize) {
+                file.delete()
+                throw RuntimeException(
+                    "telechargement incomplet ($written/$expectedSize octets) — reseau interrompu, reessaie"
+                )
+            }
+            val header = ByteArray(4)
+            file.inputStream().use { it.read(header) }
+            val isZip = header[0] == 0x50.toByte() && header[1] == 0x4B.toByte()
+            if (!isZip) {
+                file.delete()
+                throw RuntimeException("fichier telecharge invalide (pas une APK) — reessaie")
             }
             return file
         }
