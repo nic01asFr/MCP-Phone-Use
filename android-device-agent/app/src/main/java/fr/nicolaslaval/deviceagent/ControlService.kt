@@ -176,6 +176,7 @@ class ControlService : AccessibilityService() {
             // Deprecie par Google depuis la refonte multi-fenetres (Android 12+) —
             // comportement variable selon version/OEM, teste plutot que suppose fiable.
             "split_screen" -> GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN
+            "notifications" -> GLOBAL_ACTION_NOTIFICATIONS
             else -> return JSONObject().put("ok", false).put("error", "touche inconnue: $key")
         }
         val ok = performGlobalAction(globalAction)
