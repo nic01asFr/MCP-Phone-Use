@@ -84,6 +84,10 @@ class DeviceRegistry:
         except (InvalidSignature, Exception):
             return None
 
+        # Un seul appareil actif a la fois : usage personnel mono-device.
+        # Une nouvelle connexion remplace toute session precedente (evite
+        # qu'un vieil appareil de test reste "actif" et masque le vrai).
+        self.sessions.clear()
         token = secrets.token_urlsafe(32)
         self.sessions[token] = DeviceSession(device_id=device_id, expires_at=time.time() + DEVICE_SESSION_TTL_SECONDS)
         return token
