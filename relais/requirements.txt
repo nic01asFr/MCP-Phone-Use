@@ -1,0 +1,4 @@
+mcp>=1.28,<2
+uvicorn>=0.30
+starlette>=0.37
+pydantic-settings>=2.0

@@ -1,0 +1,212 @@
+"""Authorization Server provider — device-agent, mono-utilisateur.
+
+Adapte le pattern officiel du SDK MCP (examples/servers/simple-auth) a un cas
+mono-utilisateur : un seul compte autorise (Nicolas), identifiants via variables
+d'environnement, pas de credentials par defaut affiches dans le formulaire.
+
+Ne PAS reutiliser tel quel pour un service multi-utilisateurs.
+"""
+
+import os
+import secrets
+import time
+from typing import Any
+
+from pydantic import AnyHttpUrl
+from starlette.exceptions import HTTPException
+from starlette.requests import Request
+from starlette.responses import HTMLResponse, RedirectResponse, Response
+
+from mcp.server.auth.provider import (
+    AccessToken,
+    AuthorizationCode,
+    AuthorizationParams,
+    OAuthAuthorizationServerProvider,
+    RefreshToken,
+    construct_redirect_uri,
+)
+from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
+
+ACCESS_TOKEN_TTL_SECONDS = 3600  # 1h — session de dev active, pas d'acces permanent
+AUTH_CODE_TTL_SECONDS = 300
+
+
+class DeviceAgentAuthSettings:
+    """Identifiants et scope, charges depuis l'environnement (jamais en dur)."""
+
+    def __init__(self) -> None:
+        username = os.environ.get("DEVICE_AGENT_USERNAME")
+        password = os.environ.get("DEVICE_AGENT_PASSWORD")
+        if not username or not password:
+            raise RuntimeError(
+                "DEVICE_AGENT_USERNAME et DEVICE_AGENT_PASSWORD doivent etre definies "
+                "(voir .env.example) — aucun identifiant par defaut n'est fourni."
+            )
+        self.username = username
+        self.password = password
+        self.mcp_scope = "device-control"
+
+
+class SingleUserOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, RefreshToken, AccessToken]):
+    """Authorization Server mono-utilisateur pour device-agent.
+
+    Un seul compte autorise. Authorization Code + PKCE (RFC 7636), audience
+    binding RFC 8707 (`resource`). Pas de refresh token dans cette version —
+    une session expiree se re-authentifie (acceptable pour un usage dev ponctuel).
+    """
+
+    def __init__(self, settings: DeviceAgentAuthSettings, auth_callback_url: str, server_url: str):
+        self.settings = settings
+        self.auth_callback_url = auth_callback_url
+        self.server_url = server_url
+        self.clients: dict[str, OAuthClientInformationFull] = {}
+        self.auth_codes: dict[str, AuthorizationCode] = {}
+        self.tokens: dict[str, AccessToken] = {}
+        self.state_mapping: dict[str, dict[str, Any]] = {}
+
+    async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
+        return self.clients.get(client_id)
+
+    async def register_client(self, client_info: OAuthClientInformationFull) -> None:
+        if not client_info.client_id:
+            raise ValueError("No client_id provided")
+        self.clients[client_info.client_id] = client_info
+
+    async def authorize(self, client: OAuthClientInformationFull, params: AuthorizationParams) -> str:
+        state = params.state or secrets.token_hex(16)
+        self.state_mapping[state] = {
+            "redirect_uri": str(params.redirect_uri),
+            "code_challenge": params.code_challenge,
+            "redirect_uri_provided_explicitly": str(params.redirect_uri_provided_explicitly),
+            "client_id": client.client_id,
+            "resource": params.resource,  # RFC 8707
+        }
+        return f"{self.auth_callback_url}?state={state}&client_id={client.client_id}"
+
+    async def get_login_page(self, state: str) -> HTMLResponse:
+        if not state:
+            raise HTTPException(400, "Missing state parameter")
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>device-agent — connexion</title>
+            <style>
+                body {{ font-family: -apple-system, Arial, sans-serif; max-width: 420px; margin: 60px auto; padding: 0 20px; }}
+                .form-group {{ margin-bottom: 14px; }}
+                input {{ width: 100%; padding: 9px; margin-top: 5px; box-sizing: border-box; }}
+                button {{ background: #171a21; color: #fff; padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; width: 100%; }}
+            </style>
+        </head>
+        <body>
+            <h2>device-agent</h2>
+            <p>Connexion au relais — un seul compte autorise.</p>
+            <form action="{self.server_url.rstrip('/')}/login/callback" method="post">
+                <input type="hidden" name="state" value="{state}">
+                <div class="form-group">
+                    <label>Identifiant</label>
+                    <input type="text" name="username" required autofocus>
+                </div>
+                <div class="form-group">
+                    <label>Mot de passe</label>
+                    <input type="password" name="password" required>
+                </div>
+                <button type="submit">Se connecter</button>
+            </form>
+        </body>
+        </html>
+        """
+        return HTMLResponse(content=html)
+
+    async def handle_login_callback(self, request: Request) -> Response:
+        form = await request.form()
+        username = form.get("username")
+        password = form.get("password")
+        state = form.get("state")
+        if not isinstance(username, str) or not isinstance(password, str) or not isinstance(state, str):
+            raise HTTPException(400, "Missing or invalid form fields")
+        redirect_uri = await self._handle_credentials(username, password, state)
+        return RedirectResponse(url=redirect_uri, status_code=302)
+
+    async def _handle_credentials(self, username: str, password: str, state: str) -> str:
+        state_data = self.state_mapping.get(state)
+        if not state_data:
+            raise HTTPException(400, "Invalid state parameter")
+
+        # Comparaison a temps constant pour eviter le timing attack sur le mot de passe
+        if not (
+            secrets.compare_digest(username, self.settings.username)
+            and secrets.compare_digest(password, self.settings.password)
+        ):
+            raise HTTPException(401, "Invalid credentials")
+
+        redirect_uri = state_data["redirect_uri"]
+        code_challenge = state_data["code_challenge"]
+        redirect_uri_provided_explicitly = state_data["redirect_uri_provided_explicitly"] == "True"
+        client_id = state_data["client_id"]
+        resource = state_data.get("resource")
+
+        new_code = f"dvc_{secrets.token_hex(16)}"
+        self.auth_codes[new_code] = AuthorizationCode(
+            code=new_code,
+            client_id=client_id,
+            redirect_uri=AnyHttpUrl(redirect_uri),
+            redirect_uri_provided_explicitly=redirect_uri_provided_explicitly,
+            expires_at=time.time() + AUTH_CODE_TTL_SECONDS,
+            scopes=[self.settings.mcp_scope],
+            code_challenge=code_challenge,
+            resource=resource,
+            subject=username,
+        )
+        del self.state_mapping[state]
+        return construct_redirect_uri(redirect_uri, code=new_code, state=state)
+
+    async def load_authorization_code(
+        self, client: OAuthClientInformationFull, authorization_code: str
+    ) -> AuthorizationCode | None:
+        return self.auth_codes.get(authorization_code)
+
+    async def exchange_authorization_code(
+        self, client: OAuthClientInformationFull, authorization_code: AuthorizationCode
+    ) -> OAuthToken:
+        if authorization_code.code not in self.auth_codes:
+            raise ValueError("Invalid authorization code")
+        if not client.client_id:
+            raise ValueError("No client_id provided")
+
+        token = f"dvc_{secrets.token_hex(32)}"
+        self.tokens[token] = AccessToken(
+            token=token,
+            client_id=client.client_id,
+            scopes=authorization_code.scopes,
+            expires_at=int(time.time()) + ACCESS_TOKEN_TTL_SECONDS,
+            resource=authorization_code.resource,
+            subject=authorization_code.subject,
+        )
+        del self.auth_codes[authorization_code.code]
+        return OAuthToken(
+            access_token=token,
+            token_type="Bearer",
+            expires_in=ACCESS_TOKEN_TTL_SECONDS,
+            scope=" ".join(authorization_code.scopes),
+        )
+
+    async def load_access_token(self, token: str) -> AccessToken | None:
+        access_token = self.tokens.get(token)
+        if not access_token:
+            return None
+        if access_token.expires_at and access_token.expires_at < time.time():
+            del self.tokens[token]
+            return None
+        return access_token
+
+    async def load_refresh_token(self, client: OAuthClientInformationFull, refresh_token: str) -> RefreshToken | None:
+        return None
+
+    async def exchange_refresh_token(
+        self, client: OAuthClientInformationFull, refresh_token: RefreshToken, scopes: list[str]
+    ) -> OAuthToken:
+        raise NotImplementedError("Refresh tokens non supportes dans cette version")
+
+    async def revoke_token(self, token: str, token_type_hint: str | None = None) -> None:  # type: ignore[override]
+        self.tokens.pop(token, None)
