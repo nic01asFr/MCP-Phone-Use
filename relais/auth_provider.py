@@ -28,6 +28,7 @@ from mcp.server.auth.provider import (
 from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
 
 ACCESS_TOKEN_TTL_SECONDS = 3600  # 1h — session de dev active, pas d'acces permanent
+REFRESH_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30  # 30 jours, avec rotation a chaque usage
 AUTH_CODE_TTL_SECONDS = 300
 
 
@@ -62,6 +63,7 @@ class SingleUserOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode
         self.clients: dict[str, OAuthClientInformationFull] = {}
         self.auth_codes: dict[str, AuthorizationCode] = {}
         self.tokens: dict[str, AccessToken] = {}
+        self.refresh_tokens: dict[str, RefreshToken] = {}
         self.state_mapping: dict[str, dict[str, Any]] = {}
 
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
@@ -183,12 +185,22 @@ class SingleUserOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode
             resource=authorization_code.resource,
             subject=authorization_code.subject,
         )
+
+        refresh_token = f"dvcr_{secrets.token_hex(32)}"
+        self.refresh_tokens[refresh_token] = RefreshToken(
+            token=refresh_token,
+            client_id=client.client_id,
+            scopes=authorization_code.scopes,
+            expires_at=int(time.time()) + REFRESH_TOKEN_TTL_SECONDS,
+        )
+
         del self.auth_codes[authorization_code.code]
         return OAuthToken(
             access_token=token,
             token_type="Bearer",
             expires_in=ACCESS_TOKEN_TTL_SECONDS,
             scope=" ".join(authorization_code.scopes),
+            refresh_token=refresh_token,
         )
 
     async def load_access_token(self, token: str) -> AccessToken | None:
@@ -201,12 +213,54 @@ class SingleUserOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode
         return access_token
 
     async def load_refresh_token(self, client: OAuthClientInformationFull, refresh_token: str) -> RefreshToken | None:
-        return None
+        token = self.refresh_tokens.get(refresh_token)
+        if not token:
+            return None
+        if token.expires_at and token.expires_at < time.time():
+            del self.refresh_tokens[refresh_token]
+            return None
+        return token
 
     async def exchange_refresh_token(
         self, client: OAuthClientInformationFull, refresh_token: RefreshToken, scopes: list[str]
     ) -> OAuthToken:
-        raise NotImplementedError("Refresh tokens non supportes dans cette version")
+        """Echange un refresh token contre un nouvel access token, avec rotation.
+
+        Rotation : l'ancien refresh token est invalide des l'usage, un nouveau est
+        emis. Detecte un refresh token vole/rejoue (le voleur et le legitime ne
+        peuvent pas tous les deux reussir un refresh avec le meme token).
+        """
+        if refresh_token.token not in self.refresh_tokens:
+            raise ValueError("Invalid or already-used refresh token")
+
+        effective_scopes = scopes or refresh_token.scopes
+
+        new_access = f"dvc_{secrets.token_hex(32)}"
+        self.tokens[new_access] = AccessToken(
+            token=new_access,
+            client_id=refresh_token.client_id,
+            scopes=effective_scopes,
+            expires_at=int(time.time()) + ACCESS_TOKEN_TTL_SECONDS,
+            resource=None,
+            subject=None,
+        )
+
+        new_refresh = f"dvcr_{secrets.token_hex(32)}"
+        self.refresh_tokens[new_refresh] = RefreshToken(
+            token=new_refresh,
+            client_id=refresh_token.client_id,
+            scopes=effective_scopes,
+            expires_at=int(time.time()) + REFRESH_TOKEN_TTL_SECONDS,
+        )
+        del self.refresh_tokens[refresh_token.token]
+
+        return OAuthToken(
+            access_token=new_access,
+            token_type="Bearer",
+            expires_in=ACCESS_TOKEN_TTL_SECONDS,
+            scope=" ".join(effective_scopes),
+            refresh_token=new_refresh,
+        )
 
     async def revoke_token(self, token: str, token_type_hint: str | None = None) -> None:  # type: ignore[override]
         self.tokens.pop(token, None)
