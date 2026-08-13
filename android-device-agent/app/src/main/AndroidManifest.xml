@@ -6,6 +6,19 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Visibilite des packages (Android 11+) : sans ca, getLaunchIntentForPackage()
+         renvoie null pour toute app hors quelques exceptions systeme implicites
+         (Reglages en fait partie, la plupart des autres apps non). Ce pattern
+         "toutes les apps avec une icone de lancement" est la voie recommandee
+         par Google — pas besoin de la permission QUERY_ALL_PACKAGES, plus large
+         et plus scrutee. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="false"
         android:label="device-agent"
