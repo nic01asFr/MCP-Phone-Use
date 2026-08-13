@@ -60,6 +60,17 @@ class RelayClient(private val baseUrl: String) {
     fun disconnect(sessionToken: String) {
         post("/device/disconnect", JSONObject().put("session_token", sessionToken))
     }
+
+    fun pollCommands(deviceId: String): JSONObject {
+        return post("/device/commands/poll", JSONObject().put("device_id", deviceId))
+    }
+
+    fun submitResult(commandId: String, result: JSONObject) {
+        post(
+            "/device/commands/result",
+            JSONObject().put("command_id", commandId).put("result", result)
+        )
+    }
 }
 
 class RelayException(val httpCode: Int, val body: String) :

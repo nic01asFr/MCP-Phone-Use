@@ -23,6 +23,7 @@ from mcp.server.fastmcp import FastMCP
 
 from auth_provider import DeviceAgentAuthSettings, SingleUserOAuthProvider
 from device_registry import DeviceRegistry
+from command_bus import CommandBus
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("device-agent")
@@ -34,6 +35,7 @@ PORT = int(os.environ.get("DEVICE_AGENT_PORT", "8000"))
 auth_settings = DeviceAgentAuthSettings()
 
 device_registry = DeviceRegistry()
+command_bus = CommandBus()
 
 oauth_provider = SingleUserOAuthProvider(
     settings=auth_settings,
@@ -146,6 +148,32 @@ async def device_disconnect(request: Request) -> Response:
     return JSONResponse({"ok": True})
 
 
+
+
+@mcp.custom_route("/device/commands/poll", methods=["POST"])
+async def device_commands_poll(request: Request) -> Response:
+    from starlette.responses import JSONResponse
+
+    body = await request.json()
+    device_id = body.get("device_id")
+    if not device_id:
+        return JSONResponse({"error": "device_id manquant"}, status_code=400)
+    commands = command_bus.poll_and_clear(device_id)
+    return JSONResponse({"commands": commands})
+
+
+@mcp.custom_route("/device/commands/result", methods=["POST"])
+async def device_commands_result(request: Request) -> Response:
+    from starlette.responses import JSONResponse
+
+    body = await request.json()
+    command_id = body.get("command_id")
+    result = body.get("result")
+    if not command_id or result is None:
+        return JSONResponse({"error": "command_id ou result manquant"}, status_code=400)
+    ok = command_bus.submit_result(command_id, result)
+    return JSONResponse({"ok": ok})
+
 # --- Outils --------------------------------------------------------------
 # Placeholder de validation du pipeline OAuth. Les vrais outils
 # (get_screen, get_ui_tree, device_action, ...) arrivent une fois l\'app
@@ -184,6 +212,73 @@ async def generate_enrollment_code() -> dict:
     """
     code = device_registry.generate_enrollment_code()
     return {"enrollment_code": code, "expires_in": 600}
+
+
+
+
+async def _require_connected_device() -> tuple[str | None, dict | None]:
+    """Verifie le double verrou avant toute commande de controle.
+
+    Retourne (device_id, None) si un appareil est connecte, ou (None, erreur)
+    sinon — l'erreur est le dict a renvoyer tel quel par l'outil appelant.
+    """
+    session = device_registry.active_session()
+    if not session:
+        return None, {
+            "error": "Aucun appareil connecte. L'app doit etre ouverte et le bouton "
+            "Connecter active cote telephone avant de pouvoir agir.",
+        }
+    return session.device_id, None
+
+
+@mcp.tool()
+async def get_ui_tree() -> dict:
+    """Recupere l'arbre d'accessibilite de l'ecran actif du telephone connecte.
+
+    Retourne le texte, la position et les proprietes (cliquable, focusable) des
+    elements visibles a l'ecran — utile pour savoir ce qui est affiche et
+    interagissable, sans capture d'image. Echoue si aucun appareil n'est
+    connecte (double verrou).
+    """
+    device_id, error = await _require_connected_device()
+    if error:
+        return error
+    command_id = command_bus.queue_command(device_id, "dump_ui", {})
+    result = await command_bus.wait_for_result(command_id, timeout=8.0)
+    if result is None:
+        return {"error": "Timeout — l'appareil n'a pas repondu a temps (verifier qu'il est bien connecte)."}
+    return result
+
+
+@mcp.tool()
+async def device_action(action: str, x: int | None = None, y: int | None = None,
+                         x2: int | None = None, y2: int | None = None,
+                         text: str | None = None, key: str | None = None,
+                         package: str | None = None) -> dict:
+    """Effectue une action sur le telephone connecte : tap, swipe, type_text, key, launch_app.
+
+    - tap: fournir x, y
+    - swipe: fournir x, y, x2, y2
+    - type_text: fournir text (agit sur le champ actuellement focus)
+    - key: fournir key parmi 'back', 'home', 'recents'
+    - launch_app: fournir package (ex: 'com.android.settings')
+
+    Echoue si aucun appareil n'est connecte (double verrou).
+    """
+    device_id, error = await _require_connected_device()
+    if error:
+        return error
+
+    valid_actions = {"tap", "swipe", "type_text", "key", "launch_app"}
+    if action not in valid_actions:
+        return {"error": f"action invalide, attendu l'un de {sorted(valid_actions)}"}
+
+    params = {"x": x, "y": y, "x2": x2, "y2": y2, "text": text, "key": key, "package": package}
+    command_id = command_bus.queue_command(device_id, action, params)
+    result = await command_bus.wait_for_result(command_id, timeout=8.0)
+    if result is None:
+        return {"error": "Timeout — l'appareil n'a pas repondu a temps."}
+    return result
 
 
 if __name__ == "__main__":

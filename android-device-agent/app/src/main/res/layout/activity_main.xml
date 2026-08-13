@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
+    android:layout_height="match_parent">
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="24dp"
-    android:gravity="center_vertical">
+    android:padding="24dp">
 
     <TextView
         android:id="@+id/statusText"
@@ -43,4 +45,35 @@
         android:text="Connecter"
         android:enabled="false" />
 
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginBottom="16dp"
+        android:background="#33000000" />
+
+    <TextView
+        android:id="@+id/accessibilityStatusText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:text="Controle de l'ecran : desactive" />
+
+    <TextView
+        android:id="@+id/accessibilityHelpText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textSize="12sp"
+        android:textColor="#99FFFFFF"
+        android:text="Pour activer : Reglages va s'ouvrir. Cherche device-agent, active le service. IMPORTANT — au premier essai, Android affichera probablement \'Parametre restreint\' car l'app est installee hors Play Store : ferme ce message, retourne dans Reglages > Apps > device-agent > menu 3 points (en haut) > \'Autoriser les parametres restreints\', authentifie-toi, puis reviens activer le service normalement." />
+
+    <Button
+        android:id="@+id/openAccessibilitySettingsButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="Ouvrir les reglages Accessibilite" />
+
 </LinearLayout>
+</ScrollView>

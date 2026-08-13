@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">device-agent</string>
+    <string name="accessibility_service_description">Permet a device-agent de lire l\'ecran et d\'agir dessus, uniquement quand tu as active le bouton Connecter dans l\'app. Desactivable a tout moment dans ce meme ecran.</string>
 </resources>
