@@ -75,5 +75,27 @@
         android:layout_marginTop="12dp"
         android:text="Ouvrir les reglages Accessibilite" />
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:textSize="14sp"
+        android:text="Capture d'ecran (MediaProjection)" />
+
+    <TextView
+        android:id="@+id/screenCaptureStatusText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textSize="12sp"
+        android:text="Non armee" />
+
+    <Button
+        android:id="@+id/armScreenCaptureButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="Armer la capture d'ecran" />
+
 </LinearLayout>
 </ScrollView>

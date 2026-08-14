@@ -94,11 +94,27 @@ class PollingService : Service() {
                             val commandId = cmd.getString("id")
                             val type = cmd.getString("type")
                             val params = cmd.optJSONObject("params") ?: JSONObject()
-                            val service = ControlService.instance
-                            val result = if (service != null) {
-                                service.execute(type, params)
+                            val result = if (type == "capture_screen") {
+                                val screenService = ScreenCaptureService.instance
+                                if (screenService == null) {
+                                    JSONObject().put("ok", false).put("error", "Capture d'ecran non armee — bouton 'Armer la capture d'ecran' dans l'app")
+                                } else {
+                                    val jpeg = screenService.captureJpeg()
+                                    if (jpeg == null) {
+                                        JSONObject().put("ok", false).put("error", "Capture indisponible pour le moment")
+                                    } else {
+                                        JSONObject()
+                                            .put("ok", true)
+                                            .put("jpeg_base64", android.util.Base64.encodeToString(jpeg, android.util.Base64.NO_WRAP))
+                                    }
+                                }
                             } else {
-                                JSONObject().put("ok", false).put("error", "AccessibilityService non actif")
+                                val service = ControlService.instance
+                                if (service != null) {
+                                    service.execute(type, params)
+                                } else {
+                                    JSONObject().put("ok", false).put("error", "AccessibilityService non actif")
+                                }
                             }
                             client.submitResult(commandId, result)
                         }

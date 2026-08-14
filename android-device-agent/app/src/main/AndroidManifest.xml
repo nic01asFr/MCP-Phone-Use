@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 
     <!-- Visibilite des packages (Android 11+) : sans ca, getLaunchIntentForPackage()
          renvoie null pour toute app hors quelques exceptions systeme implicites
@@ -50,5 +51,9 @@
             android:name=".PollingService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+        <service
+            android:name=".ScreenCaptureService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
     </application>
 </manifest>

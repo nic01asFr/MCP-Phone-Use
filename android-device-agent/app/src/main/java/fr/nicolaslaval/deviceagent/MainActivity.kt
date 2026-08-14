@@ -1,6 +1,8 @@
 package fr.nicolaslaval.deviceagent
 
 import android.Manifest
+import android.app.Activity
+import android.media.projection.MediaProjectionManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -36,9 +38,21 @@ class MainActivity : AppCompatActivity() {
     private lateinit var connectButton: Button
     private lateinit var accessibilityStatusText: TextView
     private lateinit var openAccessibilitySettingsButton: Button
+    private lateinit var screenCaptureStatusText: TextView
+    private lateinit var armScreenCaptureButton: Button
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* ignore le resultat : best-effort */ }
+
+    private val screenCaptureLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+                ScreenCaptureService.start(this, result.resultCode, result.data!!)
+                screenCaptureStatusText.text = "Armee — active jusqu'a deconnexion ou fermeture de l'app"
+            } else {
+                screenCaptureStatusText.text = "Refusee — reessaie si besoin"
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,6 +69,8 @@ class MainActivity : AppCompatActivity() {
         connectButton = findViewById(R.id.connectButton)
         accessibilityStatusText = findViewById(R.id.accessibilityStatusText)
         openAccessibilitySettingsButton = findViewById(R.id.openAccessibilitySettingsButton)
+        screenCaptureStatusText = findViewById(R.id.screenCaptureStatusText)
+        armScreenCaptureButton = findViewById(R.id.armScreenCaptureButton)
 
         serverUrlInput.setText(
             prefs.getString("server_url", "https://user-nic01asfr-device-agent.user.lab.sspcloud.fr")
@@ -78,6 +94,10 @@ class MainActivity : AppCompatActivity() {
         }
         openAccessibilitySettingsButton.setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        }
+        armScreenCaptureButton.setOnClickListener {
+            val manager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+            screenCaptureLauncher.launch(manager.createScreenCaptureIntent())
         }
     }
 
