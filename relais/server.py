@@ -222,6 +222,18 @@ async def download_file(request: Request) -> Response:
     # peut faire "planter" un telechargement mobile en cours de route.
     return FileResponse(path, media_type="application/vnd.android.package-archive", filename=filename)
 
+
+
+@mcp.custom_route("/device/crash", methods=["POST"])
+async def device_crash(request: Request) -> Response:
+    from starlette.responses import JSONResponse
+
+    body = await request.json()
+    device_id = body.get("device_id", "inconnu")
+    stack_trace = body.get("stack_trace", "")
+    logger.error(f"=== CRASH REPORT ({device_id}) ===\n{stack_trace}\n=== FIN CRASH REPORT ===")
+    return JSONResponse({"ok": True})
+
 # --- Outils --------------------------------------------------------------
 # Placeholder de validation du pipeline OAuth. Les vrais outils
 # (get_screen, get_ui_tree, device_action, ...) arrivent une fois l\'app

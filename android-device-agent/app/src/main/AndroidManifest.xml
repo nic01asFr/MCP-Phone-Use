@@ -21,6 +21,7 @@
     </queries>
 
     <application
+        android:name=".DeviceAgentApplication"
         android:allowBackup="false"
         android:label="device-agent"
         android:theme="@style/Theme.DeviceAgent"
