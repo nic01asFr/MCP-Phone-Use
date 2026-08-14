@@ -19,7 +19,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import FastMCP, Image
 
 from auth_provider import DeviceAgentAuthSettings, SingleUserOAuthProvider
 from device_registry import DeviceRegistry
@@ -327,6 +327,33 @@ async def device_action(action: str, x: int | None = None, y: int | None = None,
     if result is None:
         return {"error": "Timeout — l'appareil n'a pas repondu a temps."}
     return result
+
+
+
+
+@mcp.tool()
+async def get_screen():
+    """Capture une image reelle de l'ecran du telephone connecte.
+
+    Complementaire a get_ui_tree : utile pour tout ce que le texte ne capture
+    pas (couleurs exactes, rendu visuel, contenu WebView/canvas non expose a
+    l'accessibilite). Echoue si aucun appareil n'est connecte (double verrou),
+    ou si l'appareil ne supporte pas encore cette commande (MediaProjection
+    pas encore implemente cote app — voir docs/architecture.md, backlog).
+    """
+    device_id, error = await _require_connected_device()
+    if error:
+        return error
+    command_id = command_bus.queue_command(device_id, "capture_screen", {})
+    result = await command_bus.wait_for_result(command_id, timeout=10.0)
+    if result is None:
+        return {"error": "Timeout — l'appareil n'a pas repondu a temps."}
+    if not result.get("ok"):
+        return result
+    import base64
+
+    image_bytes = base64.b64decode(result["jpeg_base64"])
+    return Image(data=image_bytes, format="jpeg")
 
 
 if __name__ == "__main__":
