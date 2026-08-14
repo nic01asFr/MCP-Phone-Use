@@ -27,12 +27,15 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 /**
  * Capture d'ecran reelle via MediaProjection.
  *
- * IMPORTANT (Android 14+) : l'ordre des operations est impose par l'OS —
- * recuperer le MediaProjection (getMediaProjection) et enregistrer son
- * callback AVANT d'appeler startForeground avec le type mediaProjection,
- * sinon le systeme tue le service immediatement (silencieusement, sans
- * exception visible cote utilisateur). Contrairement a PollingService, on
- * NE PEUT PAS appeler startForeground des onCreate() ici.
+ * ORDRE IMPOSE PAR ANDROID (verifie via la doc officielle Google, source
+ * developer.android.com/develop/background-work/services/fgs/service-types) :
+ * 1. startForeground() avec le type mediaProjection EN PREMIER, des le debut
+ *    de onStartCommand — sous 10s sous peine de ForegroundServiceDidNotStartInTimeException
+ *    (un RemoteServiceException systeme, pas une exception Kotlin classique,
+ *    d'ou son invisibilite dans notre rapporteur de crash applicatif).
+ * 2. getMediaProjection() SEULEMENT APRES — pas l'inverse (contrairement a
+ *    une version precedente de ce fichier, corrigee sur la base d'un
+ *    raisonnement qui s'est revele faux a la verification).
  */
 class ScreenCaptureService : Service() {
 
@@ -74,10 +77,20 @@ class ScreenCaptureService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        // Pas de startForeground ici : il doit venir APRES getMediaProjection (voir onStartCommand).
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // 1. startForeground D'ABORD, avant tout appel a MediaProjectionManager —
+        // ordre confirme par la doc officielle Android, imperatif sous 10s.
+        if (Build.VERSION.SDK_INT >= 34) {
+            ServiceCompat.startForeground(
+                this, NOTIF_ID, buildNotification(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+            )
+        } else {
+            startForeground(NOTIF_ID, buildNotification())
+        }
+
         if (mediaProjection != null) {
             instance = this
             return START_STICKY
@@ -96,7 +109,7 @@ class ScreenCaptureService : Service() {
             return START_NOT_STICKY
         }
 
-        // 1. Recuperer le token de projection en premier.
+        // 2. getMediaProjection() APRES avoir declare le service foreground.
         val manager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         val projection = manager.getMediaProjection(resultCode, resultData)
         if (projection == null) {
@@ -105,16 +118,6 @@ class ScreenCaptureService : Service() {
         }
         mediaProjection = projection
         projection.registerCallback(projectionCallback, Handler(Looper.getMainLooper()))
-
-        // 2. Ensuite seulement, declarer le service foreground de type mediaProjection.
-        if (Build.VERSION.SDK_INT >= 34) {
-            ServiceCompat.startForeground(
-                this, NOTIF_ID, buildNotification(),
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-            )
-        } else {
-            startForeground(NOTIF_ID, buildNotification())
-        }
 
         // 3. Puis la surface de capture.
         setUpVirtualDisplay(projection)
@@ -144,7 +147,6 @@ class ScreenCaptureService : Service() {
         )
     }
 
-    /** Capture la frame courante et la retourne encodee en JPEG. */
     suspend fun captureJpeg(): ByteArray? {
         val reader = imageReader ?: return null
         return suspendCancellableCoroutine { cont ->
