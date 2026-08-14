@@ -24,6 +24,7 @@ from mcp.server.fastmcp import FastMCP
 from auth_provider import DeviceAgentAuthSettings, SingleUserOAuthProvider
 from device_registry import DeviceRegistry
 from command_bus import CommandBus
+from rate_limiter import RateLimiter
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("device-agent")
@@ -36,6 +37,7 @@ auth_settings = DeviceAgentAuthSettings()
 
 device_registry = DeviceRegistry()
 command_bus = CommandBus()
+rate_limiter = RateLimiter(max_attempts=5, window_seconds=900)
 
 oauth_provider = SingleUserOAuthProvider(
     settings=auth_settings,
@@ -77,7 +79,23 @@ async def login_page(request: Request) -> Response:
 
 @mcp.custom_route("/login/callback", methods=["POST"])
 async def login_callback(request: Request) -> Response:
-    return await oauth_provider.handle_login_callback(request)
+    from starlette.responses import PlainTextResponse
+
+    ip = request.client.host if request.client else "unknown"
+    if rate_limiter.is_blocked(ip):
+        retry_after = rate_limiter.retry_after_seconds(ip)
+        return PlainTextResponse(
+            f"Trop de tentatives. Reessaie dans {retry_after}s.",
+            status_code=429,
+            headers={"Retry-After": str(retry_after)},
+        )
+    try:
+        result = await oauth_provider.handle_login_callback(request)
+    except Exception:
+        rate_limiter.record_failure(ip)
+        raise
+    rate_limiter.record_success(ip)
+    return result
 
 
 @mcp.custom_route("/healthz", methods=["GET"])
@@ -97,6 +115,14 @@ async def healthz(request: Request) -> Response:
 async def device_enroll(request: Request) -> Response:
     from starlette.responses import JSONResponse
 
+    ip = request.client.host if request.client else "unknown"
+    if rate_limiter.is_blocked(ip):
+        retry_after = rate_limiter.retry_after_seconds(ip)
+        return JSONResponse(
+            {"error": f"trop de tentatives, reessaie dans {retry_after}s"},
+            status_code=429,
+            headers={"Retry-After": str(retry_after)},
+        )
     body = await request.json()
     code = body.get("enrollment_code")
     device_id = body.get("device_id")
@@ -105,7 +131,9 @@ async def device_enroll(request: Request) -> Response:
         return JSONResponse({"error": "champs manquants"}, status_code=400)
     ok = device_registry.complete_enrollment(code, device_id, public_key)
     if not ok:
+        rate_limiter.record_failure(ip)
         return JSONResponse({"error": "code invalide, expire, ou cle publique invalide"}, status_code=400)
+    rate_limiter.record_success(ip)
     return JSONResponse({"ok": True})
 
 
