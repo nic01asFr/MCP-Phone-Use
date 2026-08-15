@@ -1,101 +1,236 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark">
 <LinearLayout
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="24dp">
 
-    <TextView
-        android:id="@+id/statusText"
+    <!-- Bloc hero : icone + etat + client + action de connexion, fusionnes -->
+    <LinearLayout
+        android:id="@+id/heroContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="16sp"
-        android:layout_marginBottom="16dp"
-        android:text="Non enrole" />
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingTop="12dp"
+        android:paddingBottom="28dp"
+        android:clickable="true"
+        android:focusable="true">
 
-    <EditText
-        android:id="@+id/serverUrlInput"
+        <FrameLayout
+            android:layout_width="92dp"
+            android:layout_height="92dp"
+            android:layout_marginBottom="14dp">
+            <View
+                android:id="@+id/heroOrbBackground"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_orb_disconnected" />
+            <ImageView
+                android:id="@+id/heroOrbIcon"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_mcp_logo" />
+        </FrameLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="MCP Phone Use"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary" />
+
+        <TextView
+            android:id="@+id/heroStatusText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Non connecte"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_secondary" />
+
+        <TextView
+            android:id="@+id/heroSubText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="appuie pour connecter"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:textColor="@color/text_secondary" />
+
+    </LinearLayout>
+
+    <!-- Carte : ajouter un appareil -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="URL du relais (https://...)"
-        android:inputType="textUri" />
+        android:orientation="vertical"
+        android:background="@drawable/bg_row_active"
+        android:padding="18dp"
+        android:layout_marginBottom="14dp">
 
-    <EditText
-        android:id="@+id/enrollmentCodeInput"
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Ajouter cet appareil"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="14dp"
+            android:text="Demande le code a ton assistant, puis saisis-le ici pour l'autoriser sur ce telephone."
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary" />
+
+        <EditText
+            android:id="@+id/serverUrlInput"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="0"
+            android:visibility="gone"
+            android:hint="URL du relais" />
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_row_inactive"
+            android:layout_marginBottom="12dp">
+            <EditText
+                android:id="@+id/enrollmentCodeInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="14dp"
+                android:background="@android:color/transparent"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary"
+                android:hint="Code d'appairage" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/enrollButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_row_inactive"
+            android:padding="13dp"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true"
+            android:text="Valider le code"
+            android:textColor="@color/accent_blue_light"
+            android:textStyle="bold"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+    <!-- Ligne fusionnee : controle de l'ecran (accessibilite) -->
+    <LinearLayout
+        android:id="@+id/accessibilityRow"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:hint="Code d'enrolement" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_row_active"
+        android:padding="14dp"
+        android:layout_marginBottom="12dp"
+        android:clickable="true"
+        android:focusable="true">
 
-    <Button
-        android:id="@+id/enrollButton"
+        <FrameLayout
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/bg_icon_circle"
+            android:layout_marginEnd="12dp">
+            <ImageView
+                android:id="@+id/accessibilityIcon"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_eye" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            <TextView
+                android:id="@+id/accessibilityMainText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Controle de l'ecran"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary" />
+            <TextView
+                android:id="@+id/accessibilitySubText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="desactive — appuie pour l'activer"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:textColor="@color/text_secondary" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Ligne fusionnee : capture d'ecran (MediaProjection) -->
+    <LinearLayout
+        android:id="@+id/captureRow"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Enroler" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_row_active"
+        android:padding="14dp"
+        android:clickable="true"
+        android:focusable="true">
 
-    <Button
-        android:id="@+id/connectButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="Connecter"
-        android:enabled="false" />
+        <FrameLayout
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/bg_icon_circle"
+            android:layout_marginEnd="12dp">
+            <ImageView
+                android:id="@+id/captureIcon"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_camera" />
+        </FrameLayout>
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="24dp"
-        android:layout_marginBottom="16dp"
-        android:background="#33000000" />
-
-    <TextView
-        android:id="@+id/accessibilityStatusText"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textSize="14sp"
-        android:text="Controle de l'ecran : desactive" />
-
-    <TextView
-        android:id="@+id/accessibilityHelpText"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:textSize="12sp"
-        android:textColor="#99FFFFFF"
-        android:text="Pour activer : Reglages va s'ouvrir. Cherche device-agent, active le service. IMPORTANT — au premier essai, Android affichera probablement \'Parametre restreint\' car l'app est installee hors Play Store : ferme ce message, retourne dans Reglages > Apps > device-agent > menu 3 points (en haut) > \'Autoriser les parametres restreints\', authentifie-toi, puis reviens activer le service normalement." />
-
-    <Button
-        android:id="@+id/openAccessibilitySettingsButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="Ouvrir les reglages Accessibilite" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:textSize="14sp"
-        android:text="Capture d'ecran (MediaProjection)" />
-
-    <TextView
-        android:id="@+id/screenCaptureStatusText"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:textSize="12sp"
-        android:text="Non armee" />
-
-    <Button
-        android:id="@+id/armScreenCaptureButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="Armer la capture d'ecran" />
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Capture d'ecran"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary" />
+            <TextView
+                android:id="@+id/screenCaptureStatusText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="non armee — appuie pour armer"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:textColor="@color/text_secondary" />
+        </LinearLayout>
+    </LinearLayout>
 
 </LinearLayout>
 </ScrollView>

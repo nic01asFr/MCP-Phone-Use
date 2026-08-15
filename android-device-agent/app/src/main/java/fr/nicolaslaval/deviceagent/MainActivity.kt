@@ -2,16 +2,18 @@ package fr.nicolaslaval.deviceagent
 
 import android.Manifest
 import android.app.Activity
-import android.media.projection.MediaProjectionManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.text.TextUtils
-import android.widget.Button
 import android.widget.EditText
+import android.widget.FrameLayout
+import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -22,35 +24,46 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Ecran unique. Le polling reseau vit dans PollingService (premier plan,
- * survit a la mise en arriere-plan de cette activite) — MainActivity ne fait
- * que piloter enrolement/connexion et demarrer/arreter ce service.
+ * Ecran unique, direction "console de liaison" simplifiee : l'orbe du haut
+ * fusionne icone/etat/client/action de connexion, les deux lignes du bas
+ * fusionnent chacune titre/statut/action. Le polling reseau vit dans
+ * PollingService, la capture dans ScreenCaptureService — cette activite ne
+ * fait que piloter l'etat et demarrer/arreter ces services.
  */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var prefs: android.content.SharedPreferences
     private lateinit var keyManager: DeviceKeyManager
+    private val defaultServerUrl = "https://user-nic01asfr-device-agent.user.lab.sspcloud.fr"
 
-    private lateinit var statusText: TextView
-    private lateinit var serverUrlInput: EditText
+    private lateinit var heroContainer: LinearLayout
+    private lateinit var heroOrbBackground: android.view.View
+    private lateinit var heroOrbIcon: ImageView
+    private lateinit var heroStatusText: TextView
+    private lateinit var heroSubText: TextView
+
     private lateinit var enrollmentCodeInput: EditText
-    private lateinit var enrollButton: Button
-    private lateinit var connectButton: Button
-    private lateinit var accessibilityStatusText: TextView
-    private lateinit var openAccessibilitySettingsButton: Button
+    private lateinit var enrollButton: TextView
+
+    private lateinit var accessibilityRow: LinearLayout
+    private lateinit var accessibilityIcon: ImageView
+    private lateinit var accessibilitySubText: TextView
+
+    private lateinit var captureRow: LinearLayout
+    private lateinit var captureIcon: ImageView
     private lateinit var screenCaptureStatusText: TextView
-    private lateinit var armScreenCaptureButton: Button
 
     private val notificationPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* ignore le resultat : best-effort */ }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     private val screenCaptureLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK && result.data != null) {
                 ScreenCaptureService.start(this, result.resultCode, result.data!!)
-                screenCaptureStatusText.text = "Armee — active jusqu'a deconnexion ou fermeture de l'app"
+                screenCaptureStatusText.text = "armee — appuie pour desarmer"
+                tintCaptureIcon(true)
             } else {
-                screenCaptureStatusText.text = "Refusee — reessaie si besoin"
+                screenCaptureStatusText.text = "refusee — appuie pour reessayer"
             }
         }
 
@@ -61,41 +74,42 @@ class MainActivity : AppCompatActivity() {
         prefs = getSharedPreferences("device_agent_prefs", Context.MODE_PRIVATE)
         keyManager = DeviceKeyManager(prefs)
         keyManager.ensureKeyPair()
+        if (prefs.getString("server_url", null) == null) {
+            prefs.edit().putString("server_url", defaultServerUrl).apply()
+        }
 
-        statusText = findViewById(R.id.statusText)
-        serverUrlInput = findViewById(R.id.serverUrlInput)
+        heroContainer = findViewById(R.id.heroContainer)
+        heroOrbBackground = findViewById(R.id.heroOrbBackground)
+        heroOrbIcon = findViewById(R.id.heroOrbIcon)
+        heroStatusText = findViewById(R.id.heroStatusText)
+        heroSubText = findViewById(R.id.heroSubText)
+
         enrollmentCodeInput = findViewById(R.id.enrollmentCodeInput)
         enrollButton = findViewById(R.id.enrollButton)
-        connectButton = findViewById(R.id.connectButton)
-        accessibilityStatusText = findViewById(R.id.accessibilityStatusText)
-        openAccessibilitySettingsButton = findViewById(R.id.openAccessibilitySettingsButton)
+
+        accessibilityRow = findViewById(R.id.accessibilityRow)
+        accessibilityIcon = findViewById(R.id.accessibilityIcon)
+        accessibilitySubText = findViewById(R.id.accessibilitySubText)
+
+        captureRow = findViewById(R.id.captureRow)
+        captureIcon = findViewById(R.id.captureIcon)
         screenCaptureStatusText = findViewById(R.id.screenCaptureStatusText)
-        armScreenCaptureButton = findViewById(R.id.armScreenCaptureButton)
-
-        serverUrlInput.setText(
-            prefs.getString("server_url", "https://user-nic01asfr-device-agent.user.lab.sspcloud.fr")
-        )
-
-        val alreadyEnrolled = prefs.getBoolean("enrolled", false)
-        val existingToken = prefs.getString("session_token", null)
-        connectButton.isEnabled = alreadyEnrolled
-        if (existingToken != null) {
-            connectButton.text = "Deconnecter"
-            updateStatus("Connecte (${keyManager.deviceId})")
-        } else {
-            updateStatus(if (alreadyEnrolled) "Enrole — pret a connecter" else "Non enrole")
-        }
 
         requestNotificationPermissionIfNeeded()
+        refreshHeroUi()
 
-        enrollButton.setOnClickListener { onEnrollClicked() }
-        connectButton.setOnClickListener {
+        heroContainer.setOnClickListener {
+            if (!prefs.getBoolean("enrolled", false)) {
+                heroSubText.text = "enrole d'abord cet appareil ci-dessous"
+                return@setOnClickListener
+            }
             if (prefs.getString("session_token", null) == null) onConnectClicked() else onDisconnectClicked()
         }
-        openAccessibilitySettingsButton.setOnClickListener {
+        enrollButton.setOnClickListener { onEnrollClicked() }
+        accessibilityRow.setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
-        armScreenCaptureButton.setOnClickListener {
+        captureRow.setOnClickListener {
             val manager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             screenCaptureLauncher.launch(manager.createScreenCaptureIntent())
         }
@@ -103,7 +117,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        refreshAccessibilityStatus()
+        refreshAccessibilityUi()
     }
 
     private fun requestNotificationPermissionIfNeeded() {
@@ -114,10 +128,48 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun refreshAccessibilityStatus() {
+    // --- Etat visuel -----------------------------------------------------
+
+    private fun refreshHeroUi() {
+        val connected = prefs.getString("session_token", null) != null
+        heroOrbBackground.background = ContextCompat.getDrawable(
+            this, if (connected) R.drawable.bg_orb_connected else R.drawable.bg_orb_disconnected
+        )
+        heroOrbIcon.setColorFilter(
+            ContextCompat.getColor(this, if (connected) android.R.color.white else R.color.text_secondary)
+        )
+        if (connected) {
+            heroStatusText.text = "Connecte a Claude"
+            heroStatusText.setTextColor(ContextCompat.getColor(this, R.color.accent_blue_light))
+            heroSubText.text = "appuie pour deconnecter"
+        } else {
+            val enrolled = prefs.getBoolean("enrolled", false)
+            heroStatusText.text = if (enrolled) "Non connecte" else "Non enrole"
+            heroStatusText.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
+            heroSubText.text = if (enrolled) "appuie pour connecter" else "enrole cet appareil ci-dessous"
+        }
+    }
+
+    private fun refreshAccessibilityUi() {
         val enabled = isControlServiceEnabled()
-        accessibilityStatusText.text =
-            if (enabled) "Controle de l'ecran : actif" else "Controle de l'ecran : desactive"
+        tintAccessibilityIcon(enabled)
+        accessibilitySubText.text = if (enabled) "actif" else "desactive — appuie pour l'activer"
+    }
+
+    private fun tintAccessibilityIcon(enabled: Boolean) {
+        val bg = accessibilityIcon.parent as FrameLayout
+        bg.background = ContextCompat.getDrawable(this, R.drawable.bg_icon_circle)
+        bg.background?.setTint(
+            ContextCompat.getColor(this, if (enabled) R.color.status_green else R.color.status_gray)
+        )
+    }
+
+    private fun tintCaptureIcon(armed: Boolean) {
+        val bg = captureIcon.parent as FrameLayout
+        bg.background = ContextCompat.getDrawable(this, R.drawable.bg_icon_circle)
+        bg.background?.setTint(
+            ContextCompat.getColor(this, if (armed) R.color.status_green else R.color.status_gray)
+        )
     }
 
     private fun isControlServiceEnabled(): Boolean {
@@ -133,36 +185,38 @@ class MainActivity : AppCompatActivity() {
         return false
     }
 
+    // --- Actions -----------------------------------------------------------
+
     private fun relayClient(): RelayClient {
-        val url = serverUrlInput.text.toString().trim()
-        prefs.edit().putString("server_url", url).apply()
+        val url = prefs.getString("server_url", defaultServerUrl) ?: defaultServerUrl
         return RelayClient(url)
     }
 
     private fun onEnrollClicked() {
         val code = enrollmentCodeInput.text.toString().trim()
         if (code.isEmpty()) {
-            updateStatus("Code d'enrolement manquant")
+            heroSubText.text = "code d'appairage manquant"
             return
         }
         lifecycleScope.launch {
-            updateStatus("Enrolement en cours...")
+            enrollButton.text = "Enrolement..."
             try {
                 withContext(Dispatchers.IO) {
                     relayClient().enroll(code, keyManager.deviceId, keyManager.publicKeyDerBase64())
                 }
                 prefs.edit().putBoolean("enrolled", true).apply()
-                connectButton.isEnabled = true
-                updateStatus("Enrole (${keyManager.deviceId}) — pret a connecter")
+                enrollButton.text = "Valider le code"
+                refreshHeroUi()
             } catch (e: Exception) {
-                updateStatus("Echec enrolement: ${e.message}")
+                enrollButton.text = "Valider le code"
+                heroSubText.text = "echec enrolement"
             }
         }
     }
 
     private fun onConnectClicked() {
         lifecycleScope.launch {
-            updateStatus("Connexion en cours...")
+            heroSubText.text = "connexion..."
             try {
                 val token = withContext(Dispatchers.IO) {
                     val client = relayClient()
@@ -171,11 +225,10 @@ class MainActivity : AppCompatActivity() {
                     client.openSession(keyManager.deviceId, nonce, signature)
                 }
                 prefs.edit().putString("session_token", token).apply()
-                connectButton.text = "Deconnecter"
-                updateStatus("Connecte (${keyManager.deviceId})")
+                refreshHeroUi()
                 PollingService.start(this@MainActivity)
             } catch (e: Exception) {
-                updateStatus("Echec connexion: ${e.message}")
+                heroSubText.text = "echec connexion"
             }
         }
     }
@@ -184,18 +237,12 @@ class MainActivity : AppCompatActivity() {
         val token = prefs.getString("session_token", null) ?: return
         prefs.edit().remove("session_token").apply()
         PollingService.stop(this)
+        refreshHeroUi()
         lifecycleScope.launch {
             try {
                 withContext(Dispatchers.IO) { relayClient().disconnect(token) }
             } catch (_: Exception) {
-                // best-effort : deconnexion locale actee meme si l'appel echoue
             }
-            connectButton.text = "Connecter"
-            updateStatus("Deconnecte")
         }
-    }
-
-    private fun updateStatus(text: String) {
-        statusText.text = text
     }
 }
