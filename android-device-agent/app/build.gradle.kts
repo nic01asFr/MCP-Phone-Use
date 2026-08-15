@@ -12,7 +12,7 @@ android {
         minSdk = 26
         targetSdk = 34
         versionCode = (System.currentTimeMillis() / 1000).toInt()  // toujours croissant, jamais de recollision entre builds
-        versionName = "0.1.0-enrollment"
+        versionName = "0.2-" + (System.currentTimeMillis() / 1000)
     }
 
     buildTypes {
@@ -30,6 +30,7 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 }
 

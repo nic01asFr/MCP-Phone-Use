@@ -52,6 +52,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var captureRow: LinearLayout
     private lateinit var captureIcon: ImageView
     private lateinit var screenCaptureStatusText: TextView
+    private lateinit var versionText: TextView
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -94,6 +95,8 @@ class MainActivity : AppCompatActivity() {
         captureRow = findViewById(R.id.captureRow)
         captureIcon = findViewById(R.id.captureIcon)
         screenCaptureStatusText = findViewById(R.id.screenCaptureStatusText)
+        versionText = findViewById(R.id.versionText)
+        versionText.text = "v" + BuildConfig.VERSION_NAME + " (code " + BuildConfig.VERSION_CODE + ")"
 
         requestNotificationPermissionIfNeeded()
         refreshHeroUi()
