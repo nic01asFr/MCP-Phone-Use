@@ -50,13 +50,12 @@ class DeviceAgentApplication : Application() {
             val exits = am.getHistoricalProcessExitReasons(packageName, 0, 1)
             val last = exits.firstOrNull() ?: return
 
-            val relevant = last.reason == ApplicationExitInfo.REASON_CRASH ||
-                last.reason == ApplicationExitInfo.REASON_CRASH_NATIVE ||
-                last.reason == ApplicationExitInfo.REASON_ANR
-
+            // Diagnostic actif : on rapporte TOUTE raison de sortie non deja vue,
+            // sans filtrer par type — on ne sait pas encore laquelle Android attribue
+            // reellement a ce plantage, autant tout voir plutot que de re-filtrer a l'aveugle.
             val prefs = getSharedPreferences("device_agent_prefs", MODE_PRIVATE)
             val alreadyReported = prefs.getLong("last_exit_reported_ts", -1L)
-            if (!relevant || last.timestamp == alreadyReported) return
+            if (last.timestamp == alreadyReported) return
 
             val traceText = try {
                 last.traceInputStream?.bufferedReader()?.readText()
