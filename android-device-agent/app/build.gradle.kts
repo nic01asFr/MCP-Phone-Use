@@ -11,7 +11,7 @@ android {
         applicationId = "fr.nicolaslaval.deviceagent"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
+        versionCode = (System.currentTimeMillis() / 1000).toInt()  // toujours croissant, jamais de recollision entre builds
         versionName = "0.1.0-enrollment"
     }
 
