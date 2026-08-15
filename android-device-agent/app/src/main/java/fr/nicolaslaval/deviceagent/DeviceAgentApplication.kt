@@ -36,7 +36,11 @@ class DeviceAgentApplication : Application() {
 
     private fun reportCrashBlocking(throwable: Throwable) {
         val prefs = getSharedPreferences("device_agent_prefs", Context.MODE_PRIVATE)
-        val serverUrl = prefs.getString("server_url", null) ?: return
+        // URL de repli en dur : ne doit jamais dependre d'un etat deja ecrit en prefs,
+        // sinon un crash tres precoce (avant que MainActivity ait pu poser la valeur
+        // par defaut) fait echouer silencieusement le rapport lui-meme.
+        val serverUrl = prefs.getString("server_url", null)
+            ?: "https://user-nic01asfr-device-agent.user.lab.sspcloud.fr"
         val deviceId = prefs.getString("device_id", "inconnu")
 
         val stackTrace = Log.getStackTraceString(throwable)
