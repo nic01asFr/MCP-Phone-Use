@@ -19,6 +19,16 @@ android {
         debug {
             isMinifyEnabled = false
         }
+        // Canal de test parallele : identifiant d'app different, cohabite avec le
+        // debug "stable" sans jamais l'ecraser. Utilise pour toute iteration a risque
+        // (comme la refonte UI) — la stable ne bouge que quand le canary est valide.
+        create("canary") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".canary"
+            versionNameSuffix = "-canary"
+            matchingFallbacks += listOf("debug")
+            resValue("string", "app_name", "MCP Phone Use (test)")
+        }
     }
 
     compileOptions {
