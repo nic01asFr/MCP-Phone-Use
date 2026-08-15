@@ -1,6 +1,9 @@
 package fr.nicolaslaval.deviceagent
 
 import android.app.Application
+import android.app.ActivityManager
+import android.app.ApplicationExitInfo
+import android.os.Build
 import android.content.Context
 import android.util.Log
 import okhttp3.MediaType.Companion.toMediaType
@@ -32,6 +35,58 @@ class DeviceAgentApplication : Application() {
             }
             previousHandler?.uncaughtException(thread, throwable)
         }
+
+        // Capte aussi les sorties de processus qui echappent au handler ci-dessus —
+        // RemoteServiceException (ex: ForegroundServiceDidNotStartInTimeException),
+        // crash natif, ANR — via l'API publique ApplicationExitInfo (Android 11+),
+        // sans jamais avoir besoin d'ADB.
+        reportLastExitReasonIfNew()
+    }
+
+    private fun reportLastExitReasonIfNew() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        try {
+            val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+            val exits = am.getHistoricalProcessExitReasons(packageName, 0, 1)
+            val last = exits.firstOrNull() ?: return
+
+            val relevant = last.reason == ApplicationExitInfo.REASON_CRASH ||
+                last.reason == ApplicationExitInfo.REASON_CRASH_NATIVE ||
+                last.reason == ApplicationExitInfo.REASON_ANR
+
+            val prefs = getSharedPreferences("device_agent_prefs", MODE_PRIVATE)
+            val alreadyReported = prefs.getLong("last_exit_reported_ts", -1L)
+            if (!relevant || last.timestamp == alreadyReported) return
+
+            val traceText = try {
+                last.traceInputStream?.bufferedReader()?.readText()
+            } catch (_: Exception) {
+                null
+            }
+
+            val summary = buildString {
+                append("=== SORTIE DE PROCESSUS (ApplicationExitInfo) ===\n")
+                append("reason=${last.reason} (${reasonName(last.reason)})\n")
+                append("description=${last.description}\n")
+                append("timestamp=${last.timestamp}\n")
+                if (traceText != null) {
+                    append("--- trace ---\n")
+                    append(traceText)
+                }
+            }
+
+            reportCrashBlocking(RuntimeException(summary))
+            prefs.edit().putLong("last_exit_reported_ts", last.timestamp).apply()
+        } catch (_: Exception) {
+            // best-effort
+        }
+    }
+
+    private fun reasonName(reason: Int): String = when (reason) {
+        ApplicationExitInfo.REASON_CRASH -> "REASON_CRASH"
+        ApplicationExitInfo.REASON_CRASH_NATIVE -> "REASON_CRASH_NATIVE"
+        ApplicationExitInfo.REASON_ANR -> "REASON_ANR"
+        else -> "autre ($reason)"
     }
 
     private fun reportCrashBlocking(throwable: Throwable) {
