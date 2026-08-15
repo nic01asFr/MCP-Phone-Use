@@ -60,8 +60,8 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK && result.data != null) {
                 ScreenCaptureService.start(this, result.resultCode, result.data!!)
-                screenCaptureStatusText.text = "armee — appuie pour desarmer"
-                tintCaptureIcon(true)
+                // Laisse un instant au service pour s'initialiser avant de lire son etat.
+                heroContainer.postDelayed({ refreshCaptureUi() }, 500)
             } else {
                 screenCaptureStatusText.text = "refusee — appuie pour reessayer"
             }
@@ -97,6 +97,7 @@ class MainActivity : AppCompatActivity() {
 
         requestNotificationPermissionIfNeeded()
         refreshHeroUi()
+        refreshCaptureUi()
 
         heroContainer.setOnClickListener {
             if (!prefs.getBoolean("enrolled", false)) {
@@ -110,14 +111,20 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
         captureRow.setOnClickListener {
-            val manager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-            screenCaptureLauncher.launch(manager.createScreenCaptureIntent())
+            if (ScreenCaptureService.instance != null) {
+                ScreenCaptureService.stop(this)
+                refreshCaptureUi()
+            } else {
+                val manager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+                screenCaptureLauncher.launch(manager.createScreenCaptureIntent())
+            }
         }
     }
 
     override fun onResume() {
         super.onResume()
         refreshAccessibilityUi()
+        refreshCaptureUi()
     }
 
     private fun requestNotificationPermissionIfNeeded() {
@@ -162,6 +169,12 @@ class MainActivity : AppCompatActivity() {
         bg.background?.setTint(
             ContextCompat.getColor(this, if (enabled) R.color.status_green else R.color.status_gray)
         )
+    }
+
+    private fun refreshCaptureUi() {
+        val armed = ScreenCaptureService.instance != null
+        tintCaptureIcon(armed)
+        screenCaptureStatusText.text = if (armed) "armee — appuie pour desarmer" else "non armee — appuie pour armer"
     }
 
     private fun tintCaptureIcon(armed: Boolean) {
