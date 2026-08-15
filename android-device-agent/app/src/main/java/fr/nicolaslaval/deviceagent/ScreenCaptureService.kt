@@ -17,6 +17,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import android.util.DisplayMetrics
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
@@ -62,6 +63,8 @@ class ScreenCaptureService : Service() {
     }
 
     private var mediaProjection: MediaProjection? = null
+    @Suppress("DEPRECATION")
+    private var wakeLock: PowerManager.WakeLock? = null
     private var virtualDisplay: VirtualDisplay? = null
     private var imageReader: ImageReader? = null
 
@@ -121,6 +124,19 @@ class ScreenCaptureService : Service() {
 
         // 3. Puis la surface de capture.
         setUpVirtualDisplay(projection)
+
+        // Empeche l'ecran de s'eteindre tant que la capture est armee — sans ca,
+        // le rendu se fige et le service peut etre tue par le systeme en arriere-plan,
+        // ce qui obligeait a se reconnecter frequemment. Duree de securite (30 min) au
+        // cas ou onDestroy ne serait jamais appele proprement.
+        @Suppress("DEPRECATION")
+        run {
+            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = powerManager.newWakeLock(
+                PowerManager.SCREEN_DIM_WAKE_LOCK or PowerManager.ON_AFTER_RELEASE,
+                "DeviceAgent:ScreenCaptureWakeLock"
+            ).apply { acquire(30 * 60 * 1000L) }
+        }
 
         instance = this
         return START_STICKY
@@ -186,7 +202,9 @@ class ScreenCaptureService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    @Suppress("DEPRECATION")
     override fun onDestroy() {
+        wakeLock?.let { if (it.isHeld) it.release() }
         virtualDisplay?.release()
         imageReader?.close()
         mediaProjection?.unregisterCallback(projectionCallback)
