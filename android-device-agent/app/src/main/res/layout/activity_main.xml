@@ -84,6 +84,18 @@
             android:fontFamily="monospace"
             android:textColor="@color/text_secondary" />
 
+        <TextView
+            android:id="@+id/revokeDeviceText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Supprimer cet appareil"
+            android:textSize="11sp"
+            android:textColor="#8A6B6B"
+            android:clickable="true"
+            android:focusable="true"
+            android:visibility="gone" />
+
     </LinearLayout>
 
     <!-- Carte : ajouter un appareil -->

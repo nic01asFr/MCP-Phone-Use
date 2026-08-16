@@ -47,6 +47,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var heroOrbIcon: ImageView
     private lateinit var heroStatusText: TextView
     private lateinit var heroSubText: TextView
+    private lateinit var revokeDeviceText: TextView
 
     private lateinit var enrollCard: LinearLayout
     private lateinit var serverUrlInput: EditText
@@ -90,6 +91,8 @@ class MainActivity : AppCompatActivity() {
         heroOrbIcon = findViewById(R.id.heroOrbIcon)
         heroStatusText = findViewById(R.id.heroStatusText)
         heroSubText = findViewById(R.id.heroSubText)
+        revokeDeviceText = findViewById(R.id.revokeDeviceText)
+        revokeDeviceText.setOnClickListener { onRevokeDeviceClicked() }
 
         enrollCard = findViewById(R.id.enrollCard)
         serverUrlInput = findViewById(R.id.serverUrlInput)
@@ -170,12 +173,15 @@ class MainActivity : AppCompatActivity() {
             heroStatusText.text = "Connecté"
             heroStatusText.setTextColor(ContextCompat.getColor(this, R.color.accent_blue_light))
             heroSubText.text = "● appuie pour déconnecter"
+            heroSubText.setTextColor(ContextCompat.getColor(this, R.color.accent_blue_light))
+            revokeDeviceText.visibility = android.view.View.VISIBLE
         } else {
             val enrolled = prefs.getBoolean("enrolled", false)
             heroStatusText.text = if (enrolled) "Non connecté" else "Non enrole"
             heroStatusText.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
             heroSubText.text = if (enrolled) "● appuie pour connecter" else "enrôle cet appareil ci-dessous"
             heroSubText.setTextColor(ContextCompat.getColor(this, if (enrolled) R.color.accent_blue_light else R.color.text_secondary))
+            revokeDeviceText.visibility = android.view.View.GONE
             stopPulseAnimation()
         }
     }
@@ -326,5 +332,28 @@ class MainActivity : AppCompatActivity() {
             } catch (_: Exception) {
             }
         }
+    }
+
+    private fun onRevokeDeviceClicked() {
+        val token = prefs.getString("session_token", null) ?: return
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Supprimer cet appareil ?")
+            .setMessage("Un nouveau code d'appairage sera necessaire pour reconnecter cet appareil.")
+            .setPositiveButton("Supprimer") { _, _ ->
+                prefs.edit()
+                    .remove("session_token")
+                    .putBoolean("enrolled", false)
+                    .apply()
+                PollingService.stop(this)
+                refreshHeroUi()
+                lifecycleScope.launch {
+                    try {
+                        withContext(Dispatchers.IO) { relayClient().revoke(token) }
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+            .setNegativeButton("Annuler", null)
+            .show()
     }
 }

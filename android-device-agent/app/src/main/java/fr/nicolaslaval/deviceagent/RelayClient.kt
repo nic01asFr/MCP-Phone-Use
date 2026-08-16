@@ -61,6 +61,10 @@ class RelayClient(private val baseUrl: String) {
         post("/device/disconnect", JSONObject().put("session_token", sessionToken))
     }
 
+    fun revoke(sessionToken: String) {
+        post("/device/revoke", JSONObject().put("session_token", sessionToken))
+    }
+
     fun pollCommands(deviceId: String): JSONObject {
         return post("/device/commands/poll", JSONObject().put("device_id", deviceId))
     }
