@@ -49,6 +49,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var heroStatusText: TextView
     private lateinit var heroSubText: TextView
 
+    private lateinit var enrollCard: LinearLayout
     private lateinit var enrollmentCodeInput: EditText
     private lateinit var enrollButton: TextView
 
@@ -93,6 +94,7 @@ class MainActivity : AppCompatActivity() {
         heroStatusText = findViewById(R.id.heroStatusText)
         heroSubText = findViewById(R.id.heroSubText)
 
+        enrollCard = findViewById(R.id.enrollCard)
         enrollmentCodeInput = findViewById(R.id.enrollmentCodeInput)
         enrollButton = findViewById(R.id.enrollButton)
 
@@ -150,6 +152,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshHeroUi() {
         val connected = prefs.getString("session_token", null) != null
+        enrollCard.visibility = if (connected) android.view.View.GONE else android.view.View.VISIBLE
         heroOrbBackground.background = ContextCompat.getDrawable(
             this, if (connected) R.drawable.bg_orb_connected else R.drawable.bg_orb_disconnected
         )
