@@ -170,7 +170,10 @@ class SingleUserOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode
         </body>
         </html>
         """
-        return HTMLResponse(content=html)
+        return HTMLResponse(
+            content=html,
+            headers={"Strict-Transport-Security": "max-age=31536000; includeSubDomains"},
+        )
 
     async def handle_login_callback(self, request: Request) -> Response:
         form = await request.form()
