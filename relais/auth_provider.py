@@ -92,18 +92,55 @@ class SingleUserOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode
         <!DOCTYPE html>
         <html>
         <head>
-            <title>device-agent — connexion</title>
+            <title>MCP Phone Use — connexion</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
-                body {{ font-family: -apple-system, Arial, sans-serif; max-width: 420px; margin: 60px auto; padding: 0 20px; }}
+                * {{ box-sizing: border-box; }}
+                body {{
+                    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+                    background: #1C1B1F;
+                    color: #E6E1E5;
+                    max-width: 380px;
+                    margin: 0 auto;
+                    padding: 48px 24px;
+                }}
+                .logo {{
+                    width: 64px; height: 64px;
+                    border-radius: 50%;
+                    background: #4C6EF5;
+                    display: flex; align-items: center; justify-content: center;
+                    margin: 0 auto 20px;
+                }}
+                .logo svg {{ width: 28px; height: 28px; }}
+                h2 {{ text-align: center; margin: 0 0 4px; font-size: 20px; }}
+                .subtitle {{ text-align: center; color: #938F99; font-size: 13px; margin-bottom: 24px; }}
+                .hint {{ font-size: 12px; color: #6b6870; margin-bottom: 20px; text-align: center; line-height: 1.5; }}
+                .hint code {{ color: #7B9EFF; font-family: monospace; }}
                 .form-group {{ margin-bottom: 14px; }}
-                input {{ width: 100%; padding: 9px; margin-top: 5px; box-sizing: border-box; }}
-                button {{ background: #171a21; color: #fff; padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; width: 100%; }}
+                label {{ font-size: 12px; color: #938F99; display: block; margin-bottom: 4px; }}
+                input {{
+                    width: 100%; padding: 12px; box-sizing: border-box;
+                    background: transparent; border: 1.5px solid #49454F; border-radius: 8px;
+                    color: #E6E1E5; font-size: 15px;
+                }}
+                input:focus {{ outline: none; border-color: #4C6EF5; }}
+                button {{
+                    background: #4C6EF5; color: #fff; padding: 13px 16px; border: none;
+                    border-radius: 24px; cursor: pointer; width: 100%; font-size: 14px;
+                    font-weight: 600; margin-top: 8px;
+                }}
             </style>
         </head>
         <body>
-            <h2>device-agent</h2>
-            <p>Connexion au relais — un seul compte autorise.</p>
-            <p style="font-size: 13px; color: #666;">Identifiant et mot de passe = <code>DEVICE_AGENT_USERNAME</code> / <code>DEVICE_AGENT_PASSWORD</code> definis dans le <code>.env</code> de ce relais.</p>
+            <div class="logo">
+                <svg viewBox="0 0 24 24" fill="#fff" fill-rule="evenodd" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M15.688 2.343a2.588 2.588 0 0 0 -3.61 0l-9.626 9.44a.863 .863 0 0 1 -1.203 0 .823 .823 0 0 1 0 -1.18l9.626 -9.44a4.313 4.313 0 0 1 6.016 0 4.116 4.116 0 0 1 1.204 3.54 4.3 4.3 0 0 1 3.609 1.18l.05 .05a4.115 4.115 0 0 1 0 5.9l-8.706 8.537a.274 .274 0 0 0 0 .393l1.788 1.754a.823 .823 0 0 1 0 1.18 .863 .863 0 0 1 -1.203 0l-1.788 -1.753a1.92 1.92 0 0 1 0 -2.754l8.706 -8.538a2.47 2.47 0 0 0 0 -3.54l-.05 -.049a2.588 2.588 0 0 0 -3.607 -.003l-7.172 7.034 -.002 .002 -.098 .097a.863 .863 0 0 1 -1.204 0 .823 .823 0 0 1 0 -1.18l7.273 -7.133a2.47 2.47 0 0 0 -.003 -3.537z"/>
+                    <path d="M14.485 4.703a.823 .823 0 0 0 0 -1.18 .863 .863 0 0 0 -1.204 0l-7.119 6.982a4.115 4.115 0 0 0 0 5.9 4.314 4.314 0 0 0 6.016 0l7.12 -6.982a.823 .823 0 0 0 0 -1.18 .863 .863 0 0 0 -1.204 0l-7.119 6.982a2.588 2.588 0 0 1 -3.61 0 2.47 2.47 0 0 1 0 -3.54l7.12 -6.982z"/>
+                </svg>
+            </div>
+            <h2>MCP Phone Use</h2>
+            <p class="subtitle">Connexion au relais — un seul compte autorise</p>
+            <p class="hint">Identifiant et mot de passe = <code>DEVICE_AGENT_USERNAME</code> / <code>DEVICE_AGENT_PASSWORD</code><br>definis dans le <code>.env</code> de ce relais.</p>
             <form action="{self.server_url.rstrip('/')}/login/callback" method="post">
                 <input type="hidden" name="state" value="{state}">
                 <div class="form-group">
