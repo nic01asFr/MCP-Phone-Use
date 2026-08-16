@@ -103,6 +103,7 @@ class SingleUserOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode
         <body>
             <h2>device-agent</h2>
             <p>Connexion au relais — un seul compte autorise.</p>
+            <p style="font-size: 13px; color: #666;">Identifiant et mot de passe = <code>DEVICE_AGENT_USERNAME</code> / <code>DEVICE_AGENT_PASSWORD</code> definis dans le <code>.env</code> de ce relais.</p>
             <form action="{self.server_url.rstrip('/')}/login/callback" method="post">
                 <input type="hidden" name="state" value="{state}">
                 <div class="form-group">
