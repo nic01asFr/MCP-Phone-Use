@@ -8,7 +8,9 @@ Donne à un assistant IA compatible MCP un accès réel et sécurisé à un tél
   <img src="docs/screenshots/main-screen.jpg" width="260" alt="Écran principal, connecté" />
 </p>
 
-> **Auto-hébergé.** Ce n'est pas un serveur MCP qu'on lance en local avec une seule commande. Il faut héberger le relais soi-même (Python, URL HTTPS publique) et compiler l'app Android soi-même (pas d'APK prêt à l'emploi, pas de lien Play Store). Compter 30-60 min pour un premier déploiement — voir [Installation](#installation).
+> **Auto-hébergé.** Ce n'est pas un serveur MCP qu'on lance en local avec une seule commande. Il faut héberger le relais soi-même (Python, URL HTTPS publique). Compter 30-60 min pour un premier déploiement — voir [Installation](#installation).
+>
+> **APK prêtes à l'emploi** : [dernière release](https://github.com/nic01asFr/MCP-Phone-Use/releases/latest) — pas besoin de compiler soi-même l'app Android, seul le relais reste à déployer.
 
 ## Ce que ça fait
 
