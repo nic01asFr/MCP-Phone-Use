@@ -7,7 +7,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -33,7 +32,7 @@ class InstallerActivity : AppCompatActivity() {
 
     private lateinit var statusText: TextView
     private lateinit var apkUrlInput: EditText
-    private lateinit var installButton: Button
+    private lateinit var installButton: TextView
 
     private val http = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
