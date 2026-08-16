@@ -87,6 +87,10 @@ class PollingService : Service() {
                 }
                 try {
                     val response = client.pollCommands(deviceId)
+                    val clientName = response.optString("client_name", "")
+                    if (clientName.isNotBlank()) {
+                        prefs.edit().putString("last_client_name", clientName).apply()
+                    }
                     val commands = response.optJSONArray("commands")
                     if (commands != null) {
                         for (i in 0 until commands.length()) {

@@ -135,6 +135,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        refreshHeroUi()
         refreshAccessibilityUi()
         refreshCaptureUi()
         // L'animation de pulsation est suspendue par l'OS quand l'app repasse en
@@ -166,7 +167,8 @@ class MainActivity : AppCompatActivity() {
             ContextCompat.getColor(this, if (connected) android.R.color.white else R.color.text_secondary)
         )
         if (connected) {
-            heroStatusText.text = "Connecté à Claude"
+            val clientName = prefs.getString("last_client_name", null)
+            heroStatusText.text = if (clientName != null) "Connecté à $clientName" else "Connecté"
             heroStatusText.setTextColor(ContextCompat.getColor(this, R.color.accent_blue_light))
             heroSubText.text = "● appuie pour déconnecter"
         } else {
