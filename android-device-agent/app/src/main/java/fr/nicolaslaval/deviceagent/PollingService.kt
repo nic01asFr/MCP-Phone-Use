@@ -87,8 +87,10 @@ class PollingService : Service() {
                 }
                 try {
                     val response = client.pollCommands(deviceId)
+                    // org.json.optString retourne parfois litteralement "null" (texte) quand
+                    // le champ JSON existe avec une valeur null -- exclusion explicite.
                     val clientName = response.optString("client_name", "")
-                    if (clientName.isNotBlank()) {
+                    if (clientName.isNotBlank() && clientName != "null") {
                         prefs.edit().putString("last_client_name", clientName).apply()
                     }
                     val commands = response.optJSONArray("commands")
