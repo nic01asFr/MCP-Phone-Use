@@ -94,6 +94,7 @@ class SingleUserOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode
         <head>
             <title>MCP Phone Use — connexion</title>
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <link rel="icon" type="image/svg+xml" href="{self.server_url.rstrip('/')}/icon.svg">
             <style>
                 * {{ box-sizing: border-box; }}
                 body {{
