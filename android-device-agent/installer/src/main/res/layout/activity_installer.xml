@@ -20,7 +20,7 @@
         android:layout_height="wrap_content"
         android:hint="URL de l'APK a installer"
         android:inputType="textUri"
-        android:text="https://user-nic01asfr-device-agent-dl.user.lab.sspcloud.fr/device-agent-debug.apk" />
+        android:text="" />
 
     <Button
         android:id="@+id/installButton"

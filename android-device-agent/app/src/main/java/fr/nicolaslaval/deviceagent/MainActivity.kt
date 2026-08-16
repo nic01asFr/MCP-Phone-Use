@@ -39,7 +39,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var prefs: android.content.SharedPreferences
     private lateinit var keyManager: DeviceKeyManager
-    private val defaultServerUrl = "https://user-nic01asfr-device-agent.user.lab.sspcloud.fr"
 
     private lateinit var heroContainer: LinearLayout
     private lateinit var heroOrbBackground: android.view.View
@@ -50,6 +49,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var heroSubText: TextView
 
     private lateinit var enrollCard: LinearLayout
+    private lateinit var serverUrlInput: EditText
     private lateinit var enrollmentCodeInput: EditText
     private lateinit var enrollButton: TextView
 
@@ -83,9 +83,6 @@ class MainActivity : AppCompatActivity() {
         prefs = getSharedPreferences("device_agent_prefs", Context.MODE_PRIVATE)
         keyManager = DeviceKeyManager(prefs)
         keyManager.ensureKeyPair()
-        if (prefs.getString("server_url", null) == null) {
-            prefs.edit().putString("server_url", defaultServerUrl).apply()
-        }
 
         heroContainer = findViewById(R.id.heroContainer)
         heroOrbBackground = findViewById(R.id.heroOrbBackground)
@@ -95,7 +92,9 @@ class MainActivity : AppCompatActivity() {
         heroSubText = findViewById(R.id.heroSubText)
 
         enrollCard = findViewById(R.id.enrollCard)
+        serverUrlInput = findViewById(R.id.serverUrlInput)
         enrollmentCodeInput = findViewById(R.id.enrollmentCodeInput)
+        prefs.getString("server_url", null)?.let { serverUrlInput.setText(it) }
         enrollButton = findViewById(R.id.enrollButton)
 
         accessibilityRow = findViewById(R.id.accessibilityRow)
@@ -262,12 +261,17 @@ class MainActivity : AppCompatActivity() {
     // --- Actions -----------------------------------------------------------
 
     private fun relayClient(): RelayClient {
-        val url = prefs.getString("server_url", defaultServerUrl) ?: defaultServerUrl
+        val url = serverUrlInput.text.toString().trim()
+        prefs.edit().putString("server_url", url).apply()
         return RelayClient(url)
     }
 
     private fun onEnrollClicked() {
         val code = enrollmentCodeInput.text.toString().trim()
+        if (serverUrlInput.text.toString().trim().isEmpty()) {
+            heroSubText.text = "adresse du relais manquante"
+            return
+        }
         if (code.isEmpty()) {
             heroSubText.text = "code d'appairage manquant"
             return

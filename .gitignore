@@ -32,3 +32,6 @@ android-device-agent/.gradle/
 # Logs de compilation Kotlin, captures de test ponctuelles
 .kotlin/
 last_capture.jpg
+
+# Cle de signature release, jamais partagee
+android-device-agent/app/keystore.properties

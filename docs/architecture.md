@@ -2,7 +2,7 @@
 
 ## Topologie
 
-Le téléphone se connecte **en sortant** vers le relais (pod SSPCloud, namespace `nic01asfr`, projet Onyxia `device-agent`). Aucun ADB, aucun NAT à percer, aucun port ouvert côté téléphone.
+Le téléphone se connecte **en sortant** vers le relais — n'importe quel hébergement HTTPS public convient (VPS, pod cloud, conteneur...), voir [`Dockerfile`](../Dockerfile) et [`relais/README.md`](../relais/README.md). Aucun ADB, aucun NAT à percer, aucun port ouvert côté téléphone. Exemple de déploiement réel utilisé pendant le développement : pod SSPCloud, namespace `nic01asfr` — un choix d'hébergement, pas une contrainte du projet.
 
 Claude (via Custom Connector claude.ai, ou Claude Code) se connecte au même relais comme client MCP.
 
@@ -10,11 +10,11 @@ Claude (via Custom Connector claude.ai, ou Claude Code) se connecte au même rel
 Claude (claude.ai / Claude Code)
         │  OAuth 2.1 + PKCE, Streamable HTTP
         ▼
-   Relais MCP (pod SSPCloud, nic01asfr)
+   Relais MCP (votre hébergement)
    auth server + resource server
         ▲
         │  connexion sortante, challenge-response (clé Keystore)
-   App Android (device-agent)
+   App Android (MCP Phone Use)
    AccessibilityService + MediaProjection
 ```
 
@@ -24,7 +24,7 @@ Claude (claude.ai / Claude Code)
 
 Même standard que les autres serveurs MCP existants (mcp-server-grist, BigMCP, QgisStreamMCP) : Authorization Code + PKCE (spec MCP 2025-06-18), RFC 8707 pour l'audience binding, OIDC pour l'identité. Un seul utilisateur autorisé. Transport Streamable HTTP.
 
-Le pod joue authorization server ET resource server — **pas de dépendance externe** (explicitement : pas de lien avec l'infrastructure Hostinger/Keycloak personnelle de Nicolas, ce projet reste self-contained sur SSPCloud).
+Le relais joue authorization server ET resource server — **pas de dépendance externe** (pas d'IdP tiers requis, pas de service d'auth externe). Fonctionne identique quel que soit l'hébergement choisi.
 
 ### App ↔ pod : paire de clés + challenge-response
 
@@ -52,9 +52,9 @@ Ces deux services système sont la partie déjà validée en conditions réelles
 
 ## Hébergement
 
-- Pod SSPCloud, namespace `nic01asfr`, projet Onyxia `device-agent`
-- SDK Android installable dans le pod — testé : `dl.google.com`, `maven.google.com`, `services.gradle.org`, `repo.maven.apache.org` tous joignables depuis le pod ; ressources largement suffisantes (1 To RAM, 6,5 To disque observés). Le build APK peut donc se faire dans le même environnement que le relais, pas besoin de repasser systématiquement par un poste local.
-- Aucun lien avec l'infrastructure Hostinger personnelle (VPN WireGuard, Keycloak, etc.) — ce projet reste entièrement sur SSPCloud.
+Requis, quel que soit l'hébergement choisi : un process Python long-vivant, joignable en HTTPS public, capable d'installer les dépendances de `relais/requirements.txt`. Voir [`Dockerfile`](../Dockerfile) pour la version conteneurisée générique.
+
+Hébergement utilisé pendant le développement de ce projet (exemple, pas une contrainte) : pod SSPCloud, namespace `nic01asfr`, projet Onyxia `device-agent` — SDK Android installable directement dedans (`dl.google.com`, `maven.google.com`, `services.gradle.org`, `repo.maven.apache.org` joignables, 1 To RAM / 6,5 To disque disponibles), ce qui permettait de compiler l'APK dans le même environnement que le relais. Rien de tout ça n'est requis ailleurs — un VPS classique avec Docker suffit.
 
 ## Distribution de l'APK
 

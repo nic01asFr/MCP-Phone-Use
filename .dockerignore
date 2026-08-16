@@ -1,0 +1,7 @@
+android-device-agent/
+docs/
+.git/
+.gitignore
+README.md
+*.md
+last_capture.jpg

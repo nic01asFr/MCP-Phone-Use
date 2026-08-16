@@ -8,7 +8,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "fr.nicolaslaval.deviceagent.installer"
+        applicationId = "io.github.nic01asfr.mcpphoneuse.installer"
         minSdk = 26
         targetSdk = 34
         versionCode = (System.currentTimeMillis() / 1000).toInt()

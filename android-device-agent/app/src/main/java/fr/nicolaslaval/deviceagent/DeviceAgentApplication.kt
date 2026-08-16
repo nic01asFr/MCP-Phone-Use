@@ -94,7 +94,8 @@ class DeviceAgentApplication : Application() {
         // sinon un crash tres precoce (avant que MainActivity ait pu poser la valeur
         // par defaut) fait echouer silencieusement le rapport lui-meme.
         val serverUrl = prefs.getString("server_url", null)
-            ?: "https://user-nic01asfr-device-agent.user.lab.sspcloud.fr"
+            ?.takeIf { it.isNotBlank() }
+            ?: return  // pas d'URL configuree -> rien a signaler nulle part
         val deviceId = prefs.getString("device_id", "inconnu")
 
         val stackTrace = Log.getStackTraceString(throwable)

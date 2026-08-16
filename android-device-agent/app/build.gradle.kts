@@ -1,6 +1,19 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+}
+
+// Signature de release : chaque personne qui compile genere sa propre cle locale,
+// jamais commitee (voir keystore.properties.example). Si absente, seul le build
+// debug reste disponible -- pas d'echec de compilation pour qui n'en a pas besoin.
+val keystorePropertiesFile = rootProject.file("app/keystore.properties")
+val keystoreProperties = Properties()
+val hasReleaseSigning = keystorePropertiesFile.exists()
+if (hasReleaseSigning) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
@@ -8,16 +21,36 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "fr.nicolaslaval.deviceagent"
+        applicationId = "io.github.nic01asfr.mcpphoneuse"
         minSdk = 26
         targetSdk = 34
         versionCode = (System.currentTimeMillis() / 1000).toInt()  // toujours croissant, jamais de recollision entre builds
         versionName = "0.2-" + (System.currentTimeMillis() / 1000)
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             isMinifyEnabled = false
+        }
+        release {
+            isMinifyEnabled = false
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+            // Sans keystore.properties, ce type de build reste declarable mais
+            // non signe -- documente dans README/CONTRIBUTING plutot que de
+            // faire echouer la compilation pour qui n'en a pas besoin.
         }
         // Canal de test parallele : identifiant d'app different, cohabite avec le
         // debug "stable" sans jamais l'ecraser. Utilise pour toute iteration a risque

@@ -47,7 +47,7 @@ Le téléphone se connecte **en sortant** vers le relais — aucun ADB, aucun NA
 
 ### 1. Déployer le relais
 
-Le relais (`relais/`) doit tourner en continu, joignable depuis internet en HTTPS — le téléphone s'y connecte en sortant, Claude l'appelle comme un serveur MCP classique. Concrètement : un VPS, un pod cloud, ou tout hébergement capable de servir du HTTPS public sur un process Python long-vivant. Voir [`relais/README.md`](relais/README.md) pour le détail.
+Le relais (`relais/`) doit tourner en continu, joignable depuis internet en HTTPS — le téléphone s'y connecte en sortant, Claude l'appelle comme un serveur MCP classique. Un [`Dockerfile`](Dockerfile) est fourni pour un déploiement générique sur n'importe quel hébergement (VPS, pod cloud...). Voir [`CONTRIBUTING.md`](CONTRIBUTING.md) pour les commandes complètes, ou [`relais/README.md`](relais/README.md) pour le détail sans Docker.
 
 ### 2. Compiler et installer l'app Android
 
