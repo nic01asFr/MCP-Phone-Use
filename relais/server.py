@@ -113,6 +113,17 @@ async def serve_icon(request: Request) -> Response:
     return FileResponse("static_icon.svg", media_type="image/svg+xml")
 
 
+@mcp.custom_route("/favicon.ico", methods=["GET"])
+async def serve_favicon(request: Request) -> Response:
+    # Tentative complementaire au champ icons (SEP-973, non rendu par les
+    # clients Claude actuels) : certains clients tombent en repli sur un
+    # favicon classique, hors protocole MCP. Sert le meme visuel, meme si
+    # des retours d'autres utilisateurs suggerent que ca ne change rien non
+    # plus cote Claude -- teste ici plutot que suppose.
+    from starlette.responses import FileResponse
+    return FileResponse("static_icon.svg", media_type="image/svg+xml")
+
+
 @mcp.custom_route("/healthz", methods=["GET"])
 async def healthz(request: Request) -> Response:
     from starlette.responses import JSONResponse
