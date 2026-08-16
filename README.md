@@ -42,8 +42,10 @@ Le téléphone se connecte **en sortant** vers le relais — aucun ADB, aucun NA
 
 - **Double verrou** — aucun outil ne répond sans les deux conditions réunies : session OAuth valide *et* app connectée côté téléphone
 - **Pas de token statique** — l'app prouve son identité par signature cryptographique (paire de clés Android Keystore, non exportable) à chaque connexion, jamais par un secret qui transite en clair
-- **Rate-limiting** — 5 tentatives / 15 min par IP sur les points d'entrée à secret devinable (connexion, enrôlement)
+- **Rate-limiting** — nombre de tentatives limité, par IP, sur les points d'entrée à secret devinable (connexion, enrôlement) — testé sous attaque réelle, voir [`SECURITY.md`](SECURITY.md)
 - **Consentement humain non contournable** — L'assistant peut amener l'utilisateur jusqu'à une popup de consentement système (accessibilité, capture d'écran), mais ne tape jamais lui-même dessus ; le dernier geste reste toujours humain, par choix, pas par limite technique
+
+Détail complet du modèle de sécurité, des tests effectués et des limites connues : [`SECURITY.md`](SECURITY.md).
 
 ## Installation
 
