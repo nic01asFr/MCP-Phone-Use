@@ -49,7 +49,7 @@
             android:textColorHint="@color/text_secondary"
             android:hint="URL de l'APK a installer"
             android:inputType="textUri"
-            android:text="" />
+            android:text="https://github.com/nic01asFr/MCP-Phone-Use/releases/latest/download/mcp-phone-use-debug.apk" />
     </FrameLayout>
 
     <TextView
