@@ -177,27 +177,28 @@ class MainActivity : AppCompatActivity() {
     private fun startPulseAnimation() {
         if (pulseAnimator?.isRunning == true) return
         heroPulseRing.visibility = android.view.View.VISIBLE
-        heroPulseRing.scaleX = 1f
-        heroPulseRing.scaleY = 1f
-        heroPulseRing.alpha = 0.8f
 
-        val scaleX = ObjectAnimator.ofFloat(heroPulseRing, "scaleX", 1f, 1.35f).apply { duration = 1600 }
-        val scaleY = ObjectAnimator.ofFloat(heroPulseRing, "scaleY", 1f, 1.35f).apply { duration = 1600 }
-        val alpha = ObjectAnimator.ofFloat(heroPulseRing, "alpha", 0.8f, 0f).apply { duration = 1600 }
-        val set = AnimatorSet().apply {
-            playTogether(scaleX, scaleY, alpha)
+        val scaleX = ObjectAnimator.ofFloat(heroPulseRing, "scaleX", 1f, 1.35f).apply {
+            duration = 1600
+            repeatCount = ObjectAnimator.INFINITE
+            repeatMode = ObjectAnimator.RESTART
             interpolator = LinearInterpolator()
         }
-        set.addListener(object : AnimatorListenerAdapter() {
-            override fun onAnimationEnd(animation: Animator) {
-                if (prefs.getString("session_token", null) != null) {
-                    heroPulseRing.scaleX = 1f
-                    heroPulseRing.scaleY = 1f
-                    heroPulseRing.alpha = 0.8f
-                    set.start()
-                }
-            }
-        })
+        val scaleY = ObjectAnimator.ofFloat(heroPulseRing, "scaleY", 1f, 1.35f).apply {
+            duration = 1600
+            repeatCount = ObjectAnimator.INFINITE
+            repeatMode = ObjectAnimator.RESTART
+            interpolator = LinearInterpolator()
+        }
+        val alpha = ObjectAnimator.ofFloat(heroPulseRing, "alpha", 0.8f, 0f).apply {
+            duration = 1600
+            repeatCount = ObjectAnimator.INFINITE
+            repeatMode = ObjectAnimator.RESTART
+            interpolator = LinearInterpolator()
+        }
+
+        val set = AnimatorSet()
+        set.playTogether(scaleX, scaleY, alpha)
         pulseAnimator = set
         set.start()
     }
@@ -205,6 +206,9 @@ class MainActivity : AppCompatActivity() {
     private fun stopPulseAnimation() {
         pulseAnimator?.cancel()
         pulseAnimator = null
+        heroPulseRing.scaleX = 1f
+        heroPulseRing.scaleY = 1f
+        heroPulseRing.alpha = 0.8f
         heroPulseRing.visibility = android.view.View.INVISIBLE
     }
 
