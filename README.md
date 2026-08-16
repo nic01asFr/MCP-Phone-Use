@@ -1,5 +1,9 @@
 # MCP Phone Use
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/nic01asFr/MCP-Phone-Use)](https://github.com/nic01asFr/MCP-Phone-Use/releases/latest)
+[![MCP](https://img.shields.io/badge/MCP-compatible-blue)](https://modelcontextprotocol.io)
+
 Donne à un assistant IA compatible MCP un accès réel et sécurisé à un téléphone Android — perception (lire l'écran, capturer une image) et action (taper, glisser, saisir du texte, lancer des apps) — sans jamais avoir besoin d'ADB ni d'ordinateur local, ni pour l'usage quotidien, ni pour le déboguer.
 
 <p align="center">
@@ -68,3 +72,7 @@ L'app est distribuée hors Play Store, ce qui déclenche par défaut le blocage 
 Socle complet et validé en conditions réelles : OAuth 2.1/PKCE, double verrou, challenge-response, rate-limiting, wake lock (empêche l'écran de s'éteindre pendant une capture active), rapporteur de crash intégré (`Thread.UncaughtExceptionHandler` + `ApplicationExitInfo`, sans ADB).
 
 Backlog restant : persistance du registre d'appareils côté relais (actuellement en mémoire, perdu à chaque redémarrage du process).
+
+## Licence
+
+[MIT](LICENSE) — libre d'utilisation, de modification et de redistribution.
