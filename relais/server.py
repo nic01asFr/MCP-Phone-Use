@@ -291,8 +291,11 @@ async def device_crash(request: Request) -> Response:
     if body is None:
         from starlette.responses import JSONResponse as _JR
         return _JR({"error": "JSON invalide"}, status_code=400)
-    device_id = body.get("device_id", "inconnu")
-    stack_trace = body.get("stack_trace", "")
+    device_id = str(body.get("device_id", "inconnu"))[:200]
+    # Plafond de taille -- endpoint non authentifie par design (un crash peut
+    # survenir avant tout enrolement), sinon un corps illimite pourrait remplir
+    # les journaux ou causer un pic memoire repete sans aucune limite de debit ici.
+    stack_trace = str(body.get("stack_trace", ""))[:10_000]
     logger.error(f"=== CRASH REPORT ({device_id}) ===\n{stack_trace}\n=== FIN CRASH REPORT ===")
     return JSONResponse({"ok": True})
 
