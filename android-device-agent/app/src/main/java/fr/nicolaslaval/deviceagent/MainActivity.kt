@@ -152,7 +152,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshHeroUi() {
         val connected = prefs.getString("session_token", null) != null
-        enrollCard.visibility = if (connected) android.view.View.GONE else android.view.View.VISIBLE
+        val enrolledNow = prefs.getBoolean("enrolled", false)
+        enrollCard.visibility = if (enrolledNow) android.view.View.GONE else android.view.View.VISIBLE
         heroOrbBackground.background = ContextCompat.getDrawable(
             this, if (connected) R.drawable.bg_orb_connected else R.drawable.bg_orb_disconnected
         )
@@ -292,7 +293,9 @@ class MainActivity : AppCompatActivity() {
                 refreshHeroUi()
                 PollingService.start(this@MainActivity)
             } catch (e: Exception) {
-                heroSubText.text = "échec connexion"
+                heroSubText.text = "échec connexion — réenrôlement probablement nécessaire"
+                prefs.edit().putBoolean("enrolled", false).apply()
+                enrollCard.visibility = android.view.View.VISIBLE
             }
         }
     }
