@@ -28,3 +28,7 @@ Thumbs.db
 
 # Gradle wrapper distribution telechargee localement (pas versionnee, dl a la volee)
 android-device-agent/.gradle/
+
+# Logs de compilation Kotlin, captures de test ponctuelles
+.kotlin/
+last_capture.jpg
