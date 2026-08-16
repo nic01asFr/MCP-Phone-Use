@@ -66,13 +66,14 @@ Ce repo succède à un projet local ("MCP apk", dossier `device-agent-relay/` + 
 
 ## Backlog
 
-- [ ] Récupérer le code Kotlin existant du projet local (les parties AccessibilityService/MediaProjection sont réutilisables telles quelles ; la couche connexion/auth est à réécrire)
-- [ ] Serveur relais : OAuth 2.1/PKCE + Streamable HTTP (s'appuyer sur la skill mcp-builder)
-- [ ] Serveur relais : enrôlement + vérification challenge-response device
-- [ ] App Android : génération de clé Keystore, écran de pairing, flux challenge-response
-- [ ] Déploiement du relais sur le pod SSPCloud (nic01asfr)
-- [ ] Build APK dans le pod (valider le SDK Android en conditions réelles, pas seulement la connectivité réseau)
-- [ ] Lien de téléchargement temporaire pour récupérer l'APK sur le téléphone
-- [ ] Enregistrement du Custom Connector côté réglages claude.ai
-- [ ] Validation bout-en-bout : get_screen / device_action réels depuis une session Claude
-Pod: nic01asfr / device-agent — cloné et opérationnel.
+Tout le backlog initial est réalisé et validé en conditions réelles : relais OAuth 2.1/PKCE + Streamable HTTP, enrôlement + challenge-response, app Android complète (AccessibilityService + MediaProjection), déploiement pod SSPCloud, installateur dédié (contournement Restricted Settings sans ADB), Custom Connector claude.ai, validation bout-en-bout de `get_ui_tree`/`device_action`/`get_screen`.
+
+Durcissements ajoutés en cours de route, au-delà du plan initial :
+- Rate-limiting par IP (5 tentatives/15min) sur les points d'entrée à secret devinable
+- Wake lock pendant la capture d'écran (évite les pertes de session liées à l'extinction d'écran)
+- Rapporteur de crash intégré (`Thread.UncaughtExceptionHandler` + `ApplicationExitInfo`, sans ADB)
+- `versionCode`/`versionName` dérivés de l'horodatage — un `versionCode` figé causait des mises à jour silencieusement sans effet
+- Canal de build `canary` (identifiant d'app distinct) pour tester une version à risque sans jamais toucher à la version stable installée
+
+Reste ouvert :
+- [ ] Persistance du registre d'appareils côté relais (actuellement en mémoire — perdu à chaque redémarrage du process, oblige à ré-enrôler)
