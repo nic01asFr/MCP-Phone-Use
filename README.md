@@ -8,6 +8,8 @@ Donne à un assistant IA compatible MCP un accès réel et sécurisé à un tél
   <img src="docs/screenshots/main-screen.jpg" width="260" alt="Écran principal, connecté" />
 </p>
 
+> **Auto-hébergé.** Ce n'est pas un serveur MCP qu'on lance en local avec une seule commande. Il faut héberger le relais soi-même (Python, URL HTTPS publique) et compiler l'app Android soi-même (pas d'APK prêt à l'emploi, pas de lien Play Store). Compter 30-60 min pour un premier déploiement — voir [Installation](#installation).
+
 ## Ce que ça fait
 
 Trois outils exposés via MCP :
@@ -43,12 +45,19 @@ Le téléphone se connecte **en sortant** vers le relais — aucun ADB, aucun NA
 
 ## Installation
 
+### 1. Déployer le relais
+
+Le relais (`relais/`) doit tourner en continu, joignable depuis internet en HTTPS — le téléphone s'y connecte en sortant, Claude l'appelle comme un serveur MCP classique. Concrètement : un VPS, un pod cloud, ou tout hébergement capable de servir du HTTPS public sur un process Python long-vivant. Voir [`relais/README.md`](relais/README.md) pour le détail.
+
+### 2. Compiler et installer l'app Android
+
 L'app est distribuée hors Play Store, ce qui déclenche par défaut le blocage Android "Paramètres restreints" empêchant l'activation de l'accessibilité. Contournement propre, sans ADB : un **installateur dédié** utilisant `PackageInstaller` en mode session (le même mécanisme que Play Store/F-Droid), qui installe `MCP Phone Use` avec un statut de confiance suffisant pour éviter ce blocage.
 
-1. Sideload direct de l'installateur (`installer/`)
-2. Depuis l'installateur, entrer l'URL du relais et installer `MCP Phone Use`
-3. Ouvrir l'app, entrer le code d'appairage donné par Claude (usage unique, 10 min)
-4. Activer l'accessibilité et, si besoin, armer la capture d'écran
+1. Compiler les deux APK (`android-device-agent/app` et `android-device-agent/installer`) — pas d'artefact prêt à l'emploi pour l'instant
+2. Sideload direct de l'installateur
+3. Depuis l'installateur, entrer l'URL du relais déployé à l'étape précédente et installer `MCP Phone Use`
+4. Ouvrir l'app, entrer le code d'appairage donné par Claude (usage unique, 10 min)
+5. Activer l'accessibilité et, si besoin, armer la capture d'écran
 
 ## État
 
