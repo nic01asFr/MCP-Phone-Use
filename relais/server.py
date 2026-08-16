@@ -20,6 +20,8 @@ from starlette.responses import Response
 
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
 from mcp.server.fastmcp import FastMCP, Image
+from mcp.server.fastmcp import Context
+from mcp.server.auth.middleware.auth_context import get_access_token
 
 from auth_provider import DeviceAgentAuthSettings, SingleUserOAuthProvider
 from device_registry import DeviceRegistry
@@ -28,6 +30,10 @@ from rate_limiter import RateLimiter
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("device-agent")
+
+# Dernier client MCP connu ayant agi sur chaque appareil (affiche cote app,
+# purement informatif, jamais utilise pour une decision de securite).
+last_client_names: dict[str, str] = {}
 
 SERVER_URL = os.environ.get("DEVICE_AGENT_SERVER_URL", "http://localhost:8000")
 HOST = os.environ.get("DEVICE_AGENT_HOST", "0.0.0.0")
@@ -187,7 +193,10 @@ async def device_commands_poll(request: Request) -> Response:
     if not device_id:
         return JSONResponse({"error": "device_id manquant"}, status_code=400)
     commands = command_bus.poll_and_clear(device_id)
-    return JSONResponse({"commands": commands})
+    return JSONResponse({
+        "commands": commands,
+        "client_name": last_client_names.get(device_id),
+    })
 
 
 @mcp.custom_route("/device/commands/result", methods=["POST"])
@@ -276,7 +285,7 @@ async def generate_enrollment_code() -> dict:
 
 
 
-async def _require_connected_device() -> tuple[str | None, dict | None]:
+async def _require_connected_device(ctx: Context | None = None) -> tuple[str | None, dict | None]:
     """Verifie le double verrou avant toute commande de controle.
 
     Retourne (device_id, None) si un appareil est connecte, ou (None, erreur)
@@ -288,11 +297,17 @@ async def _require_connected_device() -> tuple[str | None, dict | None]:
             "error": "Aucun appareil connecte. L'app doit etre ouverte et le bouton "
             "Connecter active cote telephone avant de pouvoir agir.",
         }
+    if ctx is not None:
+        access_token = get_access_token()
+        if access_token:
+            client_info = oauth_provider.clients.get(access_token.client_id)
+            if client_info and client_info.client_name:
+                last_client_names[session.device_id] = client_info.client_name
     return session.device_id, None
 
 
 @mcp.tool()
-async def get_ui_tree() -> dict:
+async def get_ui_tree(ctx: Context) -> dict:
     """Recupere l'arbre d'accessibilite de l'ecran actif du telephone connecte.
 
     Retourne le texte, la position et les proprietes (cliquable, focusable) des
@@ -300,7 +315,7 @@ async def get_ui_tree() -> dict:
     interagissable, sans capture d'image. Echoue si aucun appareil n'est
     connecte (double verrou).
     """
-    device_id, error = await _require_connected_device()
+    device_id, error = await _require_connected_device(ctx)
     if error:
         return error
     command_id = command_bus.queue_command(device_id, "dump_ui", {})
@@ -311,7 +326,7 @@ async def get_ui_tree() -> dict:
 
 
 @mcp.tool()
-async def device_action(action: str, x: int | None = None, y: int | None = None,
+async def device_action(ctx: Context, action: str, x: int | None = None, y: int | None = None,
                          x2: int | None = None, y2: int | None = None,
                          text: str | None = None, key: str | None = None,
                          package: str | None = None) -> dict:
@@ -325,7 +340,7 @@ async def device_action(action: str, x: int | None = None, y: int | None = None,
 
     Echoue si aucun appareil n'est connecte (double verrou).
     """
-    device_id, error = await _require_connected_device()
+    device_id, error = await _require_connected_device(ctx)
     if error:
         return error
 
@@ -344,7 +359,7 @@ async def device_action(action: str, x: int | None = None, y: int | None = None,
 
 
 @mcp.tool()
-async def get_screen():
+async def get_screen(ctx: Context):
     """Capture une image reelle de l'ecran du telephone connecte.
 
     Complementaire a get_ui_tree : utile pour tout ce que le texte ne capture
@@ -353,7 +368,7 @@ async def get_screen():
     ou si l'appareil ne supporte pas encore cette commande (MediaProjection
     pas encore implemente cote app — voir docs/architecture.md, backlog).
     """
-    device_id, error = await _require_connected_device()
+    device_id, error = await _require_connected_device(ctx)
     if error:
         return error
     command_id = command_bus.queue_command(device_id, "capture_screen", {})
