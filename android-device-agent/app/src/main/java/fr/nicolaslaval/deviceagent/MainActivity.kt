@@ -138,6 +138,12 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         refreshAccessibilityUi()
         refreshCaptureUi()
+        // L'animation de pulsation est suspendue par l'OS quand l'app repasse en
+        // arriere-plan (quasi systematique ici, il faut revenir a Claude pour
+        // rapporter) — sans ce relais, elle ne reprend jamais toute seule.
+        if (prefs.getString("session_token", null) != null) {
+            startPulseAnimation()
+        }
     }
 
     private fun requestNotificationPermissionIfNeeded() {
