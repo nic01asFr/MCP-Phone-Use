@@ -114,7 +114,7 @@ async def healthz(request: Request) -> Response:
 
 # --- Routes appareil (enrolement + challenge-response) -------------------
 # Ne transitent jamais via MCP/OAuth : c'est le canal de l\'app Android, pas
-# celui de Claude. Voir docs/architecture.md pour la separation des deux
+# celui du client MCP. Voir docs/architecture.md pour la separation des deux
 # mecanismes d\'authentification.
 
 @mcp.custom_route("/device/enroll", methods=["POST"])
@@ -254,8 +254,8 @@ async def device_status() -> dict:
 
     connected=true seulement si un appareil a complete le challenge-response
     recemment (session non expiree). C\'est le double verrou : meme avec une
-    session Claude valide, aucun outil de controle n\'agira si l\'app n\'est
-    pas activement connectee cote telephone.
+    session OAuth valide (quel que soit le client MCP), aucun outil de controle
+    n\'agira si l\'app n\'est pas activement connectee cote telephone.
     """
     session = device_registry.active_session()
     if not session:

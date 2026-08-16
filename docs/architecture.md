@@ -4,10 +4,10 @@
 
 Le téléphone se connecte **en sortant** vers le relais — n'importe quel hébergement HTTPS public convient (VPS, pod cloud, conteneur...), voir [`Dockerfile`](../Dockerfile) et [`relais/README.md`](../relais/README.md). Aucun ADB, aucun NAT à percer, aucun port ouvert côté téléphone. Exemple de déploiement réel utilisé pendant le développement : pod SSPCloud, namespace `nic01asfr` — un choix d'hébergement, pas une contrainte du projet.
 
-Claude (via Custom Connector claude.ai, ou Claude Code) se connecte au même relais comme client MCP.
+N'importe quel assistant IA compatible MCP se connecte au même relais comme client MCP — testé jusqu'ici avec Claude (Custom Connector claude.ai, ou Claude Code), sans dépendance structurelle à ce client précis.
 
 ```
-Claude (claude.ai / Claude Code)
+Assistant IA compatible MCP
         │  OAuth 2.1 + PKCE, Streamable HTTP
         ▼
    Relais MCP (votre hébergement)
@@ -20,7 +20,7 @@ Claude (claude.ai / Claude Code)
 
 ## Deux mécanismes d'authentification distincts
 
-### Claude ↔ pod : OAuth 2.1 + PKCE
+### Client MCP ↔ pod : OAuth 2.1 + PKCE
 
 Même standard que les autres serveurs MCP existants (mcp-server-grist, BigMCP, QgisStreamMCP) : Authorization Code + PKCE (spec MCP 2025-06-18), RFC 8707 pour l'audience binding, OIDC pour l'identité. Un seul utilisateur autorisé. Transport Streamable HTTP.
 
@@ -32,11 +32,11 @@ Pas de token statique transmis à chaque appel.
 
 - **Enrôlement (une fois)** : l'app génère une paire de clés dans l'Android Keystore (StrongBox/TEE si disponible, clé privée non-exportable). Un code d'enrôlement à usage unique, généré côté pod, associe la clé publique au device.
 - **Connexion (à chaque session)** : le pod envoie un nonce, l'app le signe avec sa clé privée, le pod vérifie la signature avec la clé publique enregistrée. Aucun secret ne transite en clair sur le fil.
-- **Révocation** : indépendante de l'auth Claude — retrait de la clé publique côté pod, sans toucher aux tokens OAuth.
+- **Révocation** : indépendante de l'auth OAuth — retrait de la clé publique côté pod, sans toucher aux tokens OAuth.
 
 ## Double verrou
 
-Aucun outil de contrôle (`get_screen`, `get_ui_tree`, `device_action`, ...) n'est disponible sans les deux conditions réunies simultanément : session OAuth Claude valide + app activée et authentifiée côté téléphone. L'app n'ouvre son canal que sur action manuelle ("Connecter"), jamais en tâche de fond permanente.
+Aucun outil de contrôle (`get_screen`, `get_ui_tree`, `device_action`, ...) n'est disponible sans les deux conditions réunies simultanément : session OAuth valide (quel que soit le client MCP) + app activée et authentifiée côté téléphone. L'app n'ouvre son canal que sur action manuelle ("Connecter"), jamais en tâche de fond permanente.
 
 ## App générique
 

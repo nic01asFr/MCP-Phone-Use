@@ -25,7 +25,7 @@ Les deux premiers reposent sur un `AccessibilityService` ; le troisième sur `Me
 ## Architecture
 
 ```
-Claude (claude.ai / Claude Code)
+Assistant IA compatible MCP (Claude, ou tout autre client MCP)
         │  OAuth 2.1 + PKCE, Streamable HTTP
         ▼
    Relais MCP (pod SSPCloud)
@@ -40,10 +40,10 @@ Le téléphone se connecte **en sortant** vers le relais — aucun ADB, aucun NA
 
 ## Sécurité
 
-- **Double verrou** — aucun outil ne répond sans les deux conditions réunies : session OAuth Claude valide *et* app connectée côté téléphone
+- **Double verrou** — aucun outil ne répond sans les deux conditions réunies : session OAuth valide *et* app connectée côté téléphone
 - **Pas de token statique** — l'app prouve son identité par signature cryptographique (paire de clés Android Keystore, non exportable) à chaque connexion, jamais par un secret qui transite en clair
 - **Rate-limiting** — 5 tentatives / 15 min par IP sur les points d'entrée à secret devinable (connexion, enrôlement)
-- **Consentement humain non contournable** — Claude peut amener l'utilisateur jusqu'à une popup de consentement système (accessibilité, capture d'écran), mais ne tape jamais lui-même dessus ; le dernier geste reste toujours humain, par choix, pas par limite technique
+- **Consentement humain non contournable** — L'assistant peut amener l'utilisateur jusqu'à une popup de consentement système (accessibilité, capture d'écran), mais ne tape jamais lui-même dessus ; le dernier geste reste toujours humain, par choix, pas par limite technique
 
 ## Installation
 
@@ -58,7 +58,7 @@ L'app est distribuée hors Play Store, ce qui déclenche par défaut le blocage 
 1. Compiler les deux APK (`android-device-agent/app` et `android-device-agent/installer`) — pas d'artefact prêt à l'emploi pour l'instant
 2. Sideload direct de l'installateur
 3. Depuis l'installateur, entrer l'URL du relais déployé à l'étape précédente et installer `MCP Phone Use`
-4. Ouvrir l'app, entrer le code d'appairage donné par Claude (usage unique, 10 min)
+4. Ouvrir l'app, entrer le code d'appairage donné par ton assistant (usage unique, 10 min)
 5. Activer l'accessibilité et, si besoin, armer la capture d'écran
 
 ## État
