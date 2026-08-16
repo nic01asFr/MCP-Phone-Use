@@ -214,6 +214,8 @@ async def device_session(request: Request) -> Response:
 
 @mcp.custom_route("/device/disconnect", methods=["POST"])
 async def device_disconnect(request: Request) -> Response:
+    """Deconnexion legere : ferme la session, la cle de l'appareil reste
+    enregistree -- reconnexion future possible sans nouveau code."""
     from starlette.responses import JSONResponse
 
     body = await _safe_json(request)
@@ -224,6 +226,23 @@ async def device_disconnect(request: Request) -> Response:
     if token:
         device_registry.disconnect(token)
     return JSONResponse({"ok": True})
+
+
+@mcp.custom_route("/device/revoke", methods=["POST"])
+async def device_revoke(request: Request) -> Response:
+    """Revocation forte : ferme la session ET retire la cle de l'appareil du
+    registre -- reconnexion future exige un nouveau code d'appairage."""
+    from starlette.responses import JSONResponse
+
+    body = await _safe_json(request)
+    if body is None:
+        from starlette.responses import JSONResponse as _JR
+        return _JR({"error": "JSON invalide"}, status_code=400)
+    token = body.get("session_token")
+    revoked = False
+    if token:
+        revoked = device_registry.revoke(token)
+    return JSONResponse({"ok": True, "revoked": revoked})
 
 
 

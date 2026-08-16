@@ -100,7 +100,20 @@ class DeviceRegistry:
         return token
 
     def disconnect(self, session_token: str) -> None:
+        """Ferme la session, mais laisse la cle de l'appareil enregistree --
+        un simple 'Connecter' suffit ensuite a revenir, sans nouveau code."""
         self.sessions.pop(session_token, None)
+
+    def revoke(self, session_token: str) -> bool:
+        """Ferme la session ET retire la cle publique de l'appareil -- une
+        vraie deconnexion, pas juste une pause. Reconnexion future = nouveau
+        code d'appairage obligatoire. Retourne True si un appareil a bien ete
+        revoque."""
+        session = self.sessions.pop(session_token, None)
+        if session is None:
+            return False
+        self.devices.pop(session.device_id, None)
+        return True
 
     def active_session(self) -> DeviceSession | None:
         """Retourne la session appareil active la plus recente, si elle n'a pas expire."""
