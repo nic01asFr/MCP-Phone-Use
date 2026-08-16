@@ -32,6 +32,18 @@ from rate_limiter import RateLimiter
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("device-agent")
 
+
+async def _safe_json(request: Request) -> dict | None:
+    """Parse le corps JSON sans jamais laisser une entree malformee remonter
+    en 500/502 non gere -- retourne None si invalide, a l'appelant de repondre
+    proprement en 400."""
+    try:
+        data = await request.json()
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+
 # Dernier client MCP connu ayant agi sur chaque appareil (affiche cote app,
 # purement informatif, jamais utilise pour une decision de securite).
 last_client_names: dict[str, str] = {}
@@ -149,7 +161,10 @@ async def device_enroll(request: Request) -> Response:
             status_code=429,
             headers={"Retry-After": str(retry_after)},
         )
-    body = await request.json()
+    body = await _safe_json(request)
+    if body is None:
+        from starlette.responses import JSONResponse as _JR
+        return _JR({"error": "JSON invalide"}, status_code=400)
     code = body.get("enrollment_code")
     device_id = body.get("device_id")
     public_key = body.get("public_key_der_b64")
@@ -167,7 +182,10 @@ async def device_enroll(request: Request) -> Response:
 async def device_challenge(request: Request) -> Response:
     from starlette.responses import JSONResponse
 
-    body = await request.json()
+    body = await _safe_json(request)
+    if body is None:
+        from starlette.responses import JSONResponse as _JR
+        return _JR({"error": "JSON invalide"}, status_code=400)
     device_id = body.get("device_id")
     nonce = device_registry.create_challenge(device_id) if device_id else None
     if not nonce:
@@ -179,7 +197,10 @@ async def device_challenge(request: Request) -> Response:
 async def device_session(request: Request) -> Response:
     from starlette.responses import JSONResponse
 
-    body = await request.json()
+    body = await _safe_json(request)
+    if body is None:
+        from starlette.responses import JSONResponse as _JR
+        return _JR({"error": "JSON invalide"}, status_code=400)
     device_id = body.get("device_id")
     nonce = body.get("nonce")
     signature = body.get("signature_b64")
@@ -195,7 +216,10 @@ async def device_session(request: Request) -> Response:
 async def device_disconnect(request: Request) -> Response:
     from starlette.responses import JSONResponse
 
-    body = await request.json()
+    body = await _safe_json(request)
+    if body is None:
+        from starlette.responses import JSONResponse as _JR
+        return _JR({"error": "JSON invalide"}, status_code=400)
     token = body.get("session_token")
     if token:
         device_registry.disconnect(token)
@@ -208,7 +232,10 @@ async def device_disconnect(request: Request) -> Response:
 async def device_commands_poll(request: Request) -> Response:
     from starlette.responses import JSONResponse
 
-    body = await request.json()
+    body = await _safe_json(request)
+    if body is None:
+        from starlette.responses import JSONResponse as _JR
+        return _JR({"error": "JSON invalide"}, status_code=400)
     device_id = body.get("device_id")
     if not device_id:
         return JSONResponse({"error": "device_id manquant"}, status_code=400)
@@ -223,7 +250,10 @@ async def device_commands_poll(request: Request) -> Response:
 async def device_commands_result(request: Request) -> Response:
     from starlette.responses import JSONResponse
 
-    body = await request.json()
+    body = await _safe_json(request)
+    if body is None:
+        from starlette.responses import JSONResponse as _JR
+        return _JR({"error": "JSON invalide"}, status_code=400)
     command_id = body.get("command_id")
     result = body.get("result")
     if not command_id or result is None:
@@ -257,7 +287,10 @@ async def download_file(request: Request) -> Response:
 async def device_crash(request: Request) -> Response:
     from starlette.responses import JSONResponse
 
-    body = await request.json()
+    body = await _safe_json(request)
+    if body is None:
+        from starlette.responses import JSONResponse as _JR
+        return _JR({"error": "JSON invalide"}, status_code=400)
     device_id = body.get("device_id", "inconnu")
     stack_trace = body.get("stack_trace", "")
     logger.error(f"=== CRASH REPORT ({device_id}) ===\n{stack_trace}\n=== FIN CRASH REPORT ===")
