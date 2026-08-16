@@ -1,6 +1,11 @@
 package fr.nicolaslaval.deviceagent
 
 import android.Manifest
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
+import android.view.animation.LinearInterpolator
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -38,6 +43,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var heroContainer: LinearLayout
     private lateinit var heroOrbBackground: android.view.View
+    private lateinit var heroPulseRing: android.view.View
+    private var pulseAnimator: AnimatorSet? = null
     private lateinit var heroOrbIcon: ImageView
     private lateinit var heroStatusText: TextView
     private lateinit var heroSubText: TextView
@@ -64,7 +71,7 @@ class MainActivity : AppCompatActivity() {
                 // Laisse un instant au service pour s'initialiser avant de lire son etat.
                 heroContainer.postDelayed({ refreshCaptureUi() }, 500)
             } else {
-                screenCaptureStatusText.text = "refusee — appuie pour reessayer"
+                screenCaptureStatusText.text = "refusée — ● appuie pour réessayer"
             }
         }
 
@@ -81,6 +88,7 @@ class MainActivity : AppCompatActivity() {
 
         heroContainer = findViewById(R.id.heroContainer)
         heroOrbBackground = findViewById(R.id.heroOrbBackground)
+        heroPulseRing = findViewById(R.id.heroPulseRing)
         heroOrbIcon = findViewById(R.id.heroOrbIcon)
         heroStatusText = findViewById(R.id.heroStatusText)
         heroSubText = findViewById(R.id.heroSubText)
@@ -104,7 +112,7 @@ class MainActivity : AppCompatActivity() {
 
         heroContainer.setOnClickListener {
             if (!prefs.getBoolean("enrolled", false)) {
-                heroSubText.text = "enrole d'abord cet appareil ci-dessous"
+                heroSubText.text = "enrôle d'abord cet appareil ci-dessous"
                 return@setOnClickListener
             }
             if (prefs.getString("session_token", null) == null) onConnectClicked() else onDisconnectClicked()
@@ -149,21 +157,57 @@ class MainActivity : AppCompatActivity() {
             ContextCompat.getColor(this, if (connected) android.R.color.white else R.color.text_secondary)
         )
         if (connected) {
-            heroStatusText.text = "Connecte a Claude"
+            heroStatusText.text = "Connecté à Claude"
             heroStatusText.setTextColor(ContextCompat.getColor(this, R.color.accent_blue_light))
-            heroSubText.text = "appuie pour deconnecter"
+            heroSubText.text = "● appuie pour déconnecter"
         } else {
             val enrolled = prefs.getBoolean("enrolled", false)
-            heroStatusText.text = if (enrolled) "Non connecte" else "Non enrole"
+            heroStatusText.text = if (enrolled) "Non connecté" else "Non enrole"
             heroStatusText.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
-            heroSubText.text = if (enrolled) "appuie pour connecter" else "enrole cet appareil ci-dessous"
+            heroSubText.text = if (enrolled) "● appuie pour connecter" else "enrôle cet appareil ci-dessous"
+            heroSubText.setTextColor(ContextCompat.getColor(this, if (enrolled) R.color.accent_blue_light else R.color.text_secondary))
+            stopPulseAnimation()
         }
+    }
+
+    private fun startPulseAnimation() {
+        if (pulseAnimator?.isRunning == true) return
+        heroPulseRing.visibility = android.view.View.VISIBLE
+        heroPulseRing.scaleX = 1f
+        heroPulseRing.scaleY = 1f
+        heroPulseRing.alpha = 0.8f
+
+        val scaleX = ObjectAnimator.ofFloat(heroPulseRing, "scaleX", 1f, 1.35f).apply { duration = 1600 }
+        val scaleY = ObjectAnimator.ofFloat(heroPulseRing, "scaleY", 1f, 1.35f).apply { duration = 1600 }
+        val alpha = ObjectAnimator.ofFloat(heroPulseRing, "alpha", 0.8f, 0f).apply { duration = 1600 }
+        val set = AnimatorSet().apply {
+            playTogether(scaleX, scaleY, alpha)
+            interpolator = LinearInterpolator()
+        }
+        set.addListener(object : AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: Animator) {
+                if (prefs.getString("session_token", null) != null) {
+                    heroPulseRing.scaleX = 1f
+                    heroPulseRing.scaleY = 1f
+                    heroPulseRing.alpha = 0.8f
+                    set.start()
+                }
+            }
+        })
+        pulseAnimator = set
+        set.start()
+    }
+
+    private fun stopPulseAnimation() {
+        pulseAnimator?.cancel()
+        pulseAnimator = null
+        heroPulseRing.visibility = android.view.View.INVISIBLE
     }
 
     private fun refreshAccessibilityUi() {
         val enabled = isControlServiceEnabled()
         tintAccessibilityIcon(enabled)
-        accessibilitySubText.text = if (enabled) "actif" else "desactive — appuie pour l'activer"
+        accessibilitySubText.text = if (enabled) "● actif" else "désactivé — ● appuie pour l'activer"
     }
 
     private fun tintAccessibilityIcon(enabled: Boolean) {
@@ -177,7 +221,7 @@ class MainActivity : AppCompatActivity() {
     private fun refreshCaptureUi() {
         val armed = ScreenCaptureService.instance != null
         tintCaptureIcon(armed)
-        screenCaptureStatusText.text = if (armed) "armee — appuie pour desarmer" else "non armee — appuie pour armer"
+        screenCaptureStatusText.text = if (armed) "armée — ● appuie pour désarmer" else "non armée — ● appuie pour armer"
     }
 
     private fun tintCaptureIcon(armed: Boolean) {
@@ -215,7 +259,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         lifecycleScope.launch {
-            enrollButton.text = "Enrolement..."
+            enrollButton.text = "Enrôlement..."
             try {
                 withContext(Dispatchers.IO) {
                     relayClient().enroll(code, keyManager.deviceId, keyManager.publicKeyDerBase64())
@@ -223,9 +267,10 @@ class MainActivity : AppCompatActivity() {
                 prefs.edit().putBoolean("enrolled", true).apply()
                 enrollButton.text = "Valider le code"
                 refreshHeroUi()
+                onConnectClicked()  // enchaine directement, pas besoin d'un second tap
             } catch (e: Exception) {
                 enrollButton.text = "Valider le code"
-                heroSubText.text = "echec enrolement"
+                heroSubText.text = "échec enrôlement"
             }
         }
     }
@@ -244,7 +289,7 @@ class MainActivity : AppCompatActivity() {
                 refreshHeroUi()
                 PollingService.start(this@MainActivity)
             } catch (e: Exception) {
-                heroSubText.text = "echec connexion"
+                heroSubText.text = "échec connexion"
             }
         }
     }

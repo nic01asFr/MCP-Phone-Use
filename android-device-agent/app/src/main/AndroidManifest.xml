@@ -24,7 +24,7 @@
     <application
         android:name=".DeviceAgentApplication"
         android:allowBackup="false"
-        android:label="device-agent"
+        android:label="@string/app_name"
         android:theme="@style/Theme.DeviceAgent"
         android:usesCleartextTraffic="false">
 

@@ -22,13 +22,23 @@
         android:focusable="true">
 
         <FrameLayout
-            android:layout_width="92dp"
-            android:layout_height="92dp"
-            android:layout_marginBottom="14dp">
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:layout_marginBottom="14dp"
+            android:clipChildren="false"
+            android:clipToPadding="false">
+            <View
+                android:id="@+id/heroPulseRing"
+                android:layout_width="92dp"
+                android:layout_height="92dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_pulse_ring"
+                android:visibility="invisible" />
             <View
                 android:id="@+id/heroOrbBackground"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_width="92dp"
+                android:layout_height="92dp"
+                android:layout_gravity="center"
                 android:background="@drawable/bg_orb_disconnected" />
             <ImageView
                 android:id="@+id/heroOrbIcon"
