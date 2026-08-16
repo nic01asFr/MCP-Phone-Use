@@ -20,6 +20,7 @@ from starlette.responses import Response
 
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
 from mcp.server.fastmcp import FastMCP, Image
+from mcp.types import Icon
 from mcp.server.fastmcp import Context
 from mcp.server.auth.middleware.auth_context import get_access_token
 
@@ -52,11 +53,13 @@ oauth_provider = SingleUserOAuthProvider(
 )
 
 mcp = FastMCP(
-    name="device-agent",
+    name="MCP Phone Use",
     instructions=(
-        "Relais de controle a distance d\'un telephone Android (SURFAC2E / device-agent). "
-        "Outils indisponibles tant qu\'aucun appareil n\'est connecte et arme."
+        "Relais de controle a distance d\'un telephone Android — perception "
+        "(get_ui_tree, get_screen) et action (device_action). Outils "
+        "indisponibles tant qu\'aucun appareil n\'est connecte et arme."
     ),
+    icons=[Icon(src=f"{SERVER_URL.rstrip('/')}/icon.svg", mimeType="image/svg+xml", sizes=["any"])],
     auth_server_provider=oauth_provider,
     auth=AuthSettings(
         issuer_url=AnyHttpUrl(SERVER_URL),
@@ -102,6 +105,12 @@ async def login_callback(request: Request) -> Response:
         raise
     rate_limiter.record_success(ip)
     return result
+
+
+@mcp.custom_route("/icon.svg", methods=["GET"])
+async def serve_icon(request: Request) -> Response:
+    from starlette.responses import FileResponse
+    return FileResponse("static_icon.svg", media_type="image/svg+xml")
 
 
 @mcp.custom_route("/healthz", methods=["GET"])
