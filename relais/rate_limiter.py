@@ -18,7 +18,13 @@ class RateLimiter:
     def _prune(self, ip: str) -> list[float]:
         cutoff = time.time() - self.window_seconds
         recent = [t for t in self.attempts.get(ip, []) if t > cutoff]
-        self.attempts[ip] = recent
+        if recent:
+            self.attempts[ip] = recent
+        else:
+            # Supprime vraiment la cle plutot que de laisser une liste vide
+            # trainer indefiniment -- sinon une IP qui echoue une fois puis
+            # ne revient jamais laisse une entree permanente en memoire.
+            self.attempts.pop(ip, None)
         return recent
 
     def is_blocked(self, ip: str) -> bool:

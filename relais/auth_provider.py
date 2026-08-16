@@ -61,6 +61,7 @@ class SingleUserOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode
         self.auth_callback_url = auth_callback_url
         self.server_url = server_url
         self.clients: dict[str, OAuthClientInformationFull] = {}
+        self._registration_timestamps: list[float] = []  # limite globale, protege contre le remplissage memoire via /register (non authentifie par design DCR)
         self.auth_codes: dict[str, AuthorizationCode] = {}
         self.tokens: dict[str, AccessToken] = {}
         self.refresh_tokens: dict[str, RefreshToken] = {}
@@ -72,6 +73,18 @@ class SingleUserOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode
     async def register_client(self, client_info: OAuthClientInformationFull) -> None:
         if not client_info.client_id:
             raise ValueError("No client_id provided")
+        # /register est ouvert sans authentification par design (DCR standard) --
+        # limite globale simple pour empecher un remplissage memoire illimite,
+        # generreuse pour un usage legitime multi-clients.
+        now = time.time()
+        self._registration_timestamps = [t for t in self._registration_timestamps if now - t < 60]
+        if len(self._registration_timestamps) >= 30:
+            from mcp.server.auth.provider import RegistrationError
+            raise RegistrationError(
+                error="invalid_client_metadata",
+                error_description="Trop d'enregistrements de client recents, reessaie plus tard.",
+            )
+        self._registration_timestamps.append(now)
         self.clients[client_info.client_id] = client_info
 
     async def authorize(self, client: OAuthClientInformationFull, params: AuthorizationParams) -> str:

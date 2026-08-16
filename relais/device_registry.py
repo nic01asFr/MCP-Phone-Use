@@ -36,8 +36,15 @@ class DeviceRegistry:
 
     # --- Enrolement (bootstrap via appel MCP authentifie) -----------------
     def generate_enrollment_code(self) -> str:
+        # Nettoyage paresseux des codes expires jamais utilises -- sinon ils
+        # s'accumulent indefiniment (seul un usage reussi les supprimait avant).
+        now = time.time()
+        expired = [c for c, exp in self.enrollment_codes.items() if exp <= now]
+        for c in expired:
+            del self.enrollment_codes[c]
+
         code = secrets.token_hex(4)  # 8 caracteres hex, facile a retaper
-        self.enrollment_codes[code] = time.time() + ENROLLMENT_CODE_TTL_SECONDS
+        self.enrollment_codes[code] = now + ENROLLMENT_CODE_TTL_SECONDS
         return code
 
     def complete_enrollment(self, enrollment_code: str, device_id: str, public_key_der_b64: str) -> bool:
