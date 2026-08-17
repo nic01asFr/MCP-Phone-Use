@@ -1,68 +1,70 @@
-# Contribuer / déployer sa propre instance
+# Contributing / deploying your own instance
 
-Ce projet est auto-hébergé — il n'y a pas de service central géré par quelqu'un d'autre. Chaque personne qui l'utilise fait tourner son propre relais et compile sa propre app.
+*[Lire en français](CONTRIBUTING.fr.md)*
 
-## Comment ça marche concrètement, avant les commandes
+This project is self-hosted — there is no central service managed by someone else. Each person using it runs their own relay and compiles their own app.
 
-**GitHub, dans cette histoire, joue deux rôles distincts.** D'un côté, il héberge le code source, public et librement consultable. De l'autre, via son onglet "Releases", il héberge aussi des **fichiers compilés prêts à l'emploi** — les APK Android, en pièces jointes téléchargeables directement, sans avoir besoin de compiler quoi que ce soit soi-même. Les deux sont sur GitHub, mais ce ne sont pas la même chose : le code est la recette, la Release est le plat déjà préparé.
+## How it actually works, before the commands
 
-**Ce que GitHub ne fait PAS**, c'est faire tourner un programme pour vous en continu. Le relais (le petit serveur qui fait le pont entre Claude et votre téléphone) doit vivre quelque part qui reste allumé — un VPS à quelques euros par mois, un pod cloud, ou tout hébergement capable de faire tourner un conteneur Docker en continu. C'est la seule pièce que vous devez héberger vous-même ; tout le reste (le code, les APK) vient directement de GitHub.
+**GitHub plays two distinct roles here.** On one hand, it hosts the source code, public and freely browsable. On the other, via its "Releases" tab, it also hosts **pre-built, ready-to-use files** — the Android APKs, as downloadable attachments, no compiling required. Both live on GitHub, but they're not the same thing: the code is the recipe, the Release is the dish already cooked.
 
-**Le chemin concret, du début à la fin :**
-1. Vous déployez le relais sur votre propre hébergement (voir plus bas) — vous obtenez une URL publique en HTTPS (ex : `https://mon-relais.exemple.com`)
-2. Sur votre téléphone, vous installez l'app "installateur" — téléchargeable directement depuis la [Release GitHub](https://github.com/nic01asFr/MCP-Phone-Use/releases/latest), sans rien compiler
-3. Dans l'installateur, vous validez le lien de l'APK principale (déjà pré-rempli avec la dernière version publiée sur GitHub) — il télécharge et installe "MCP Phone Use" à votre place
-4. Vous ouvrez l'app, entrez l'URL de **votre** relais (celle de l'étape 1)
-5. Vous connectez votre assistant IA (Claude ou autre) à cette même URL comme connecteur MCP, et générez un code d'appairage à usage unique
-6. Vous saisissez ce code dans l'app — la connexion est établie, avec authentification cryptographique à chaque reconnexion future
+**What GitHub does NOT do** is run a program for you continuously. The relay (the small server that bridges Claude and your phone) needs to live somewhere that stays on — a few-euros-a-month VPS, a cloud pod, or any hosting capable of running a Docker container continuously. That's the only piece you need to host yourself; everything else (the code, the APKs) comes straight from GitHub.
 
-## Déployer le relais
+**The concrete path, start to finish:**
+1. You deploy the relay on your own hosting (see below) — you get a public HTTPS URL (e.g. `https://my-relay.example.com`)
+2. On your phone, you install the "installer" app — downloadable directly from the [GitHub Release](https://github.com/nic01asFr/MCP-Phone-Use/releases/latest), nothing to compile
+3. In the installer, you confirm the main APK's link (already pre-filled with the latest version published on GitHub) — it downloads and installs "MCP Phone Use" for you
+4. You open the app, enter the URL of **your** relay (from step 1)
+5. You connect your AI assistant (Claude or another) to that same URL as an MCP connector, and generate a single-use pairing code
+6. You enter that code in the app — the connection is established, with cryptographic authentication on every future reconnection
 
-Avec Docker (recommandé) :
+## Deploy the relay
+
+With Docker (recommended):
 
 ```bash
 git clone https://github.com/nic01asFr/MCP-Phone-Use.git
 cd MCP-Phone-Use
-cp relais/.env.example relais/.env   # editer DEVICE_AGENT_PASSWORD et DEVICE_AGENT_SERVER_URL
+cp relais/.env.example relais/.env   # edit DEVICE_AGENT_PASSWORD and DEVICE_AGENT_SERVER_URL
 docker build -t mcp-phone-use-relay .
 docker run -d --env-file relais/.env -p 8000:8000 mcp-phone-use-relay
 ```
 
-Le conteneur écoute en HTTP simple sur le port 8000 — placez un reverse-proxy (Caddy, nginx, Traefik) devant pour le HTTPS public, obligatoire pour OAuth. `DEVICE_AGENT_SERVER_URL` doit correspondre à l'URL publique finale (celle après le reverse-proxy), pas à `localhost`.
+The container listens on plain HTTP on port 8000 — put a reverse proxy (Caddy, nginx, Traefik) in front for public HTTPS, required for OAuth. `DEVICE_AGENT_SERVER_URL` must match the final public URL (the one after the reverse proxy), not `localhost`.
 
-Sans Docker : voir [`relais/README.md`](relais/README.md).
+Without Docker: see [`relais/README.md`](relais/README.md).
 
-## Compiler l'app Android (optionnel)
+## Compile the Android app (optional)
 
-Pas nécessaire pour un usage courant — les APK prêtes à l'emploi sont sur la [Release GitHub](https://github.com/nic01asFr/MCP-Phone-Use/releases/latest). Compiler soi-même n'est utile que pour modifier le code, ou pour une signature de production propre (voir plus bas).
+Not needed for regular use — ready-to-use APKs are on the [GitHub Release](https://github.com/nic01asFr/MCP-Phone-Use/releases/latest). Compiling yourself is only useful for modifying the code, or for a clean production signature (see below).
 
 ```bash
 cd android-device-agent
 ./gradlew :app:assembleDebug :installer:assembleDebug
 ```
 
-APK générés dans `app/build/outputs/apk/debug/` et `installer/build/outputs/apk/debug/`.
+APKs are generated in `app/build/outputs/apk/debug/` and `installer/build/outputs/apk/debug/`.
 
-Pour une signature release (recommandé si vous distribuez l'app au-delà de votre propre téléphone) :
+For a release signature (recommended if you distribute the app beyond your own phone):
 
 ```bash
-keytool -genkey -v -keystore ma-cle-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias mcp-phone-use
+keytool -genkey -v -keystore my-release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias mcp-phone-use
 cp android-device-agent/app/keystore.properties.example android-device-agent/app/keystore.properties
-# editer keystore.properties avec le chemin et les mots de passe de la cle generee
+# edit keystore.properties with the path and passwords of the generated key
 cd android-device-agent && ./gradlew :app:assembleRelease
 ```
 
-`keystore.properties` est exclu par `.gitignore` — ne jamais le committer.
+`keystore.properties` is excluded via `.gitignore` — never commit it.
 
-## Installer sur le téléphone
+## Install on the phone
 
-1. Télécharger `mcp-phone-use-installer-debug.apk` depuis la [Release GitHub](https://github.com/nic01asFr/MCP-Phone-Use/releases/latest), sideload direct
-2. Ouvrir l'installateur — le lien de l'APK principale est déjà pré-rempli (dernière version publiée), valider "Télécharger et installer"
-3. Ouvrir `MCP Phone Use`, entrer l'URL de **votre** relais (celle configurée dans `DEVICE_AGENT_SERVER_URL`), puis le code d'appairage donné par votre assistant IA
-4. Activer l'accessibilité et, si besoin, armer la capture d'écran
+1. Download `mcp-phone-use-installer-debug.apk` from the [GitHub Release](https://github.com/nic01asFr/MCP-Phone-Use/releases/latest), sideload directly
+2. Open the installer — the main APK's link is already pre-filled (latest published version), tap "Download and install"
+3. Open `MCP Phone Use`, enter the URL of **your** relay (the one configured in `DEVICE_AGENT_SERVER_URL`), then the pairing code given by your AI assistant
+4. Enable accessibility and, if needed, arm screen capture
 
-Voir le [README](README.md) pour le détail de l'architecture et de la sécurité.
+See the [README](README.md) for details on architecture and security.
 
-## Contribuer du code
+## Contributing code
 
-Pull requests bienvenues. Pas de process formel pour l'instant — ouvrez une issue si le changement est substantiel avant d'investir du temps dedans.
+Pull requests welcome. No formal process for now — open an issue if the change is substantial before investing time in it.

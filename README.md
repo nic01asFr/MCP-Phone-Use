@@ -1,78 +1,79 @@
 # MCP Phone Use
 
+*[Lire en français](README.fr.md)*
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/nic01asFr/MCP-Phone-Use)](https://github.com/nic01asFr/MCP-Phone-Use/releases/latest)
 [![MCP](https://img.shields.io/badge/MCP-compatible-blue)](https://modelcontextprotocol.io)
 
-Donne à un assistant IA compatible MCP un accès réel et sécurisé à un téléphone Android — perception (lire l'écran, capturer une image) et action (taper, glisser, saisir du texte, lancer des apps) — sans jamais avoir besoin d'ADB ni d'ordinateur local, ni pour l'usage quotidien, ni pour le déboguer.
+Gives an MCP-compatible AI assistant real, secure access to an Android phone — perception (reading the screen, taking a screenshot) and action (tap, swipe, type text, launch apps) — without ever needing ADB or a local computer, neither for everyday use nor for debugging.
 
 <p align="center">
-  <img src="docs/screenshots/home-screen-icon.jpg" width="260" alt="Icône MCP Phone Use sur l'écran d'accueil" />
+  <img src="docs/screenshots/home-screen-icon.jpg" width="260" alt="MCP Phone Use icon on the home screen" />
   &nbsp;&nbsp;
-  <img src="docs/screenshots/main-screen.jpg" width="260" alt="Écran principal, connecté" />
+  <img src="docs/screenshots/main-screen.jpg" width="260" alt="Main screen, connected" />
 </p>
 
-> **Auto-hébergé.** Ce n'est pas un serveur MCP qu'on lance en local avec une seule commande. Il faut héberger le relais soi-même (Python, URL HTTPS publique). Compter 30-60 min pour un premier déploiement — voir [Installation](#installation).
+> **Self-hosted.** This isn't an MCP server you spin up locally with a single command. You need to host the relay yourself (Python, public HTTPS URL). Expect 30-60 minutes for a first deployment — see [Installation](#installation).
 >
-> **APK prêtes à l'emploi** : [dernière release](https://github.com/nic01asFr/MCP-Phone-Use/releases/latest) — pas besoin de compiler soi-même l'app Android, seul le relais reste à déployer.
+> **Ready-to-use APKs**: [latest release](https://github.com/nic01asFr/MCP-Phone-Use/releases/latest) — no need to compile the Android app yourself, only the relay still needs deploying.
 
-## Ce que ça fait
+## What it does
 
-Trois outils exposés via MCP :
+Three tools exposed via MCP:
 
-- **`get_ui_tree`** — lit la hiérarchie d'accessibilité de l'app au premier plan (texte, éléments cliquables, position), quelle que soit l'app active
+- **`get_ui_tree`** — reads the accessibility hierarchy of the foreground app (text, clickable elements, position), regardless of which app is active
 - **`device_action`** — `tap`, `swipe`, `type_text`, `key` (back/home/recents/notifications), `launch_app`
-- **`get_screen`** — capture d'écran réelle (JPEG), pour tout ce que l'accessibilité seule ne peut pas voir (rendu visuel, contenu WebView, apps peu accessibles)
+- **`get_screen`** — real screenshot (JPEG), for anything accessibility alone can't see (visual rendering, WebView content, poorly-accessible apps)
 
-Les deux premiers reposent sur un `AccessibilityService` ; le troisième sur `MediaProjection` (armée séparément, consentement système à chaque session, jamais groupée avec la connexion).
+The first two rely on an `AccessibilityService`; the third on `MediaProjection` (armed separately, system consent prompt on every session, never bundled with the connection itself).
 
 ## Architecture
 
 ```
-Assistant IA compatible MCP (Claude, ou tout autre client MCP)
+MCP-compatible AI assistant (Claude, or any other MCP client)
         │  OAuth 2.1 + PKCE, Streamable HTTP
         ▼
-   Relais MCP (pod SSPCloud)
+   MCP relay (your own hosting)
    auth server + resource server
         ▲
-        │  connexion sortante, challenge-response (clé Keystore)
-   App Android (MCP Phone Use)
+        │  outbound connection, challenge-response (Keystore key)
+   Android app (MCP Phone Use)
    AccessibilityService + MediaProjection
 ```
 
-Le téléphone se connecte **en sortant** vers le relais — aucun ADB, aucun NAT à percer, aucun port ouvert côté téléphone. Détail complet dans [`docs/architecture.md`](docs/architecture.md).
+The phone connects **outbound** to the relay — no ADB, no NAT traversal, no open port on the phone's side. Full detail in [`docs/architecture.md`](docs/architecture.md).
 
-## Sécurité
+## Security
 
-- **Double verrou** — aucun outil ne répond sans les deux conditions réunies : session OAuth valide *et* app connectée côté téléphone
-- **Pas de token statique** — l'app prouve son identité par signature cryptographique (paire de clés Android Keystore, non exportable) à chaque connexion, jamais par un secret qui transite en clair
-- **Rate-limiting** — nombre de tentatives limité, par IP, sur les points d'entrée à secret devinable (connexion, enrôlement) — testé sous attaque réelle, voir [`SECURITY.md`](SECURITY.md)
-- **Consentement humain non contournable** — L'assistant peut amener l'utilisateur jusqu'à une popup de consentement système (accessibilité, capture d'écran), mais ne tape jamais lui-même dessus ; le dernier geste reste toujours humain, par choix, pas par limite technique
+- **Double lock** — no tool responds unless both conditions are met: valid OAuth session *and* app connected on the phone's side
+- **No static token** — the app proves its identity through a cryptographic signature (Android Keystore key pair, non-exportable) on every connection, never through a secret sent in the clear
+- **Rate-limiting** — bounded attempt count, per IP, on entry points with a guessable secret (login, enrollment) — tested under a real attack, see [`SECURITY.md`](SECURITY.md)
+- **Non-bypassable human consent** — the assistant can bring the user to a system consent popup (accessibility, screen capture), but never taps it itself; the final gesture always stays human, by design, not by technical limitation
 
-Détail complet du modèle de sécurité, des tests effectués et des limites connues : [`SECURITY.md`](SECURITY.md).
+Full detail on the security model, the tests actually performed, and the known limitations: [`SECURITY.md`](SECURITY.md).
 
 ## Installation
 
-### 1. Déployer le relais
+### 1. Deploy the relay
 
-Le relais (`relais/`) doit tourner en continu, joignable depuis internet en HTTPS — le téléphone s'y connecte en sortant, Claude l'appelle comme un serveur MCP classique. Un [`Dockerfile`](Dockerfile) est fourni pour un déploiement générique sur n'importe quel hébergement (VPS, pod cloud...). Voir [`CONTRIBUTING.md`](CONTRIBUTING.md) pour les commandes complètes, ou [`relais/README.md`](relais/README.md) pour le détail sans Docker.
+The relay (`relais/`) needs to run continuously, reachable from the internet over HTTPS — the phone connects to it outbound, and Claude calls it like any regular MCP server. A [`Dockerfile`](Dockerfile) is provided for generic deployment on any hosting (VPS, cloud pod...). See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full commands, or [`relais/README.md`](relais/README.md) for detail without Docker.
 
-### 2. Compiler et installer l'app Android
+### 2. Install the Android app
 
-L'app est distribuée hors Play Store, ce qui déclenche par défaut le blocage Android "Paramètres restreints" empêchant l'activation de l'accessibilité. Contournement propre, sans ADB : un **installateur dédié** utilisant `PackageInstaller` en mode session (le même mécanisme que Play Store/F-Droid), qui installe `MCP Phone Use` avec un statut de confiance suffisant pour éviter ce blocage.
+The app is distributed outside the Play Store, which by default triggers Android's "Restricted Settings" block, preventing accessibility from being enabled. Clean workaround, no ADB needed: a **dedicated installer** using `PackageInstaller` in session mode (the same mechanism Play Store/F-Droid use), which installs `MCP Phone Use` with enough trust status to avoid that block.
 
-1. Compiler les deux APK (`android-device-agent/app` et `android-device-agent/installer`) — pas d'artefact prêt à l'emploi pour l'instant
-2. Sideload direct de l'installateur
-3. Depuis l'installateur, entrer l'URL du relais déployé à l'étape précédente et installer `MCP Phone Use`
-4. Ouvrir l'app, entrer le code d'appairage donné par ton assistant (usage unique, 10 min)
-5. Activer l'accessibilité et, si besoin, armer la capture d'écran
+1. Download the installer from the [latest release](https://github.com/nic01asFr/MCP-Phone-Use/releases/latest), sideload directly
+2. Open the installer (the main APK's URL is already pre-filled), tap "Download and install"
+3. Open the app, enter the pairing code given by your assistant (single-use, 10 min)
+4. Enable accessibility and, if needed, arm screen capture
 
-## État
+## Status
 
-Socle complet et validé en conditions réelles : OAuth 2.1/PKCE, double verrou, challenge-response, rate-limiting, wake lock (empêche l'écran de s'éteindre pendant une capture active), rapporteur de crash intégré (`Thread.UncaughtExceptionHandler` + `ApplicationExitInfo`, sans ADB).
+Complete groundwork, validated under real conditions: OAuth 2.1/PKCE, double lock, challenge-response, rate-limiting, wake lock (keeps the screen from turning off during an active capture), built-in crash reporter (`Thread.UncaughtExceptionHandler` + `ApplicationExitInfo`, no ADB needed).
 
-Backlog restant : persistance du registre d'appareils côté relais (actuellement en mémoire, perdu à chaque redémarrage du process).
+Remaining backlog: persistence of the device registry on the relay side (currently in-memory, lost on every process restart).
 
-## Licence
+## License
 
-[MIT](LICENSE) — libre d'utilisation, de modification et de redistribution.
+[MIT](LICENSE) — free to use, modify, and redistribute.
