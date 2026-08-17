@@ -1,26 +1,26 @@
-# relais — device-agent (OAuth 2.1/PKCE + MCP Streamable HTTP)
+# relay — device-agent (OAuth 2.1/PKCE + MCP Streamable HTTP)
 
-## Prérequis pour un vrai déploiement
+## Requirements for a real deployment
 
 - Python 3.11+
-- Une URL **HTTPS publique** pointant vers ce process — obligatoire : OAuth exige HTTPS, et le téléphone doit pouvoir joindre le relais depuis n'importe quel réseau (4G comprise). En pratique : un reverse-proxy (Caddy, nginx, Traefik...) devant le process Python, avec un certificat valide (Let's Encrypt ou équivalent).
-- Le process doit rester **vivant en continu** — ce n'est pas un script qu'on lance ponctuellement. Prévoir un service géré par systemd, un conteneur avec restart policy, ou l'équivalent de votre plateforme.
-- **Aucune persistance actuellement** : le registre d'appareils et les sessions vivent en mémoire — un redémarrage du process efface tout, ré-enrôlement nécessaire. Backlog connu, voir `docs/architecture.md`.
+- A **public HTTPS URL** pointing to this process — required: OAuth demands HTTPS, and the phone needs to reach the relay from any network (4G included). In practice: a reverse proxy (Caddy, nginx, Traefik...) in front of the Python process, with a valid certificate (Let's Encrypt or equivalent).
+- The process needs to stay **continuously alive** — this isn't a script you run occasionally. Plan for a systemd-managed service, a container with a restart policy, or your platform's equivalent.
+- **No persistence currently**: the device registry and sessions live in memory — restarting the process wipes everything, requiring re-enrollment. Known backlog item, see `docs/architecture.md`.
 
-## Lancer en local (dev / test)
+## Running locally (dev / test)
 
 ```bash
-cp .env.example .env   # puis editer DEVICE_AGENT_PASSWORD
+cp .env.example .env   # then edit DEVICE_AGENT_PASSWORD
 set -a; source .env; set +a
 pip install -r requirements.txt
 python server.py
 ```
 
-Ça démarre le serveur en HTTP simple sur le port configuré — suffisant pour développer, **pas suffisant tel quel pour un usage réel** (pas de HTTPS, pas de redémarrage automatique). Voir "Prérequis" ci-dessus pour passer en déploiement réel.
+This starts the server on plain HTTP on the configured port — enough for development, **not enough as-is for real use** (no HTTPS, no automatic restart). See "Requirements" above to move to a real deployment.
 
-## Tester
+## Testing
 
 - `GET /healthz` -> `{"status": "ok"}`
-- `GET /.well-known/oauth-authorization-server` -> metadonnees OAuth (auto, via FastMCP)
-- Un client MCP sans token sur `/mcp` -> 401 avec `WWW-Authenticate: Bearer ...`
-- Flux complet : voir `test_oauth_flow.py` (simule le parcours authorize -> login -> code -> token -> appel outil)
+- `GET /.well-known/oauth-authorization-server` -> OAuth metadata (automatic, via FastMCP)
+- An MCP client with no token on `/mcp` -> 401 with `WWW-Authenticate: Bearer ...`
+- Full flow: see `test_oauth_flow.py` (simulates the authorize -> login -> code -> token -> tool call journey)

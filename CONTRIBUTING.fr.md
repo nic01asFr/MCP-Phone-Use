@@ -32,7 +32,7 @@ docker run -d --env-file relais/.env -p 8000:8000 mcp-phone-use-relay
 
 Le conteneur écoute en HTTP simple sur le port 8000 — placez un reverse-proxy (Caddy, nginx, Traefik) devant pour le HTTPS public, obligatoire pour OAuth. `DEVICE_AGENT_SERVER_URL` doit correspondre à l'URL publique finale (celle après le reverse-proxy), pas à `localhost`.
 
-Sans Docker : voir [`relais/README.md`](relais/README.md).
+Sans Docker : voir [`relais/README.md`](relais/README.fr.md).
 
 ## Compiler l'app Android (optionnel)
 

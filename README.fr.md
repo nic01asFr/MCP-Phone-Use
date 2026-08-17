@@ -42,7 +42,7 @@ Assistant IA compatible MCP (Claude, ou tout autre client MCP)
    AccessibilityService + MediaProjection
 ```
 
-Le téléphone se connecte **en sortant** vers le relais — aucun ADB, aucun NAT à percer, aucun port ouvert côté téléphone. Détail complet dans [`docs/architecture.md`](docs/architecture.md).
+Le téléphone se connecte **en sortant** vers le relais — aucun ADB, aucun NAT à percer, aucun port ouvert côté téléphone. Détail complet dans [`docs/architecture.md`](docs/architecture.fr.md).
 
 ## Sécurité
 
@@ -57,7 +57,7 @@ Détail complet du modèle de sécurité, des tests effectués et des limites co
 
 ### 1. Déployer le relais
 
-Le relais (`relais/`) doit tourner en continu, joignable depuis internet en HTTPS — le téléphone s'y connecte en sortant, Claude l'appelle comme un serveur MCP classique. Un [`Dockerfile`](Dockerfile) est fourni pour un déploiement générique sur n'importe quel hébergement (VPS, pod cloud...). Voir [`CONTRIBUTING.md`](CONTRIBUTING.md) pour les commandes complètes, ou [`relais/README.md`](relais/README.md) pour le détail sans Docker.
+Le relais (`relais/`) doit tourner en continu, joignable depuis internet en HTTPS — le téléphone s'y connecte en sortant, Claude l'appelle comme un serveur MCP classique. Un [`Dockerfile`](Dockerfile) est fourni pour un déploiement générique sur n'importe quel hébergement (VPS, pod cloud...). Voir [`CONTRIBUTING.md`](CONTRIBUTING.fr.md) pour les commandes complètes, ou [`relais/README.md`](relais/README.fr.md) pour le détail sans Docker.
 
 ### 2. Installer l'app Android
 

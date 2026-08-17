@@ -1,79 +1,79 @@
-# Architecture & journal de décisions
+# Architecture & decision log
 
-## Topologie
+## Topology
 
-Le téléphone se connecte **en sortant** vers le relais — n'importe quel hébergement HTTPS public convient (VPS, pod cloud, conteneur...), voir [`Dockerfile`](../Dockerfile) et [`relais/README.md`](../relais/README.md). Aucun ADB, aucun NAT à percer, aucun port ouvert côté téléphone. Exemple de déploiement réel utilisé pendant le développement : pod SSPCloud, namespace `nic01asfr` — un choix d'hébergement, pas une contrainte du projet.
+The phone connects **outbound** to the relay — any public HTTPS hosting works (VPS, cloud pod, container...), see [`Dockerfile`](../Dockerfile) and [`relais/README.md`](../relais/README.md). No ADB, no NAT to traverse, no open port on the phone's side. Real deployment example used during development: SSPCloud pod, `nic01asfr` namespace — a hosting choice, not a project constraint.
 
-N'importe quel assistant IA compatible MCP se connecte au même relais comme client MCP — testé jusqu'ici avec Claude (Custom Connector claude.ai, ou Claude Code), sans dépendance structurelle à ce client précis.
+Any MCP-compatible AI assistant connects to the same relay as an MCP client — tested so far with Claude (claude.ai Custom Connector, or Claude Code), with no structural dependency on that specific client.
 
 ```
-Assistant IA compatible MCP
+MCP-compatible AI assistant
         │  OAuth 2.1 + PKCE, Streamable HTTP
         ▼
-   Relais MCP (votre hébergement)
+   MCP relay (your own hosting)
    auth server + resource server
         ▲
-        │  connexion sortante, challenge-response (clé Keystore)
-   App Android (MCP Phone Use)
+        │  outbound connection, challenge-response (Keystore key)
+   Android app (MCP Phone Use)
    AccessibilityService + MediaProjection
 ```
 
-## Deux mécanismes d'authentification distincts
+## Two distinct authentication mechanisms
 
-### Client MCP ↔ pod : OAuth 2.1 + PKCE
+### MCP client ↔ pod: OAuth 2.1 + PKCE
 
-Même standard que les autres serveurs MCP existants (mcp-server-grist, BigMCP, QgisStreamMCP) : Authorization Code + PKCE (spec MCP 2025-06-18), RFC 8707 pour l'audience binding, OIDC pour l'identité. Un seul utilisateur autorisé. Transport Streamable HTTP.
+Same standard as other existing MCP servers (mcp-server-grist, BigMCP, QgisStreamMCP): Authorization Code + PKCE (MCP spec 2025-06-18), RFC 8707 for audience binding, OIDC for identity. Single authorized user. Streamable HTTP transport.
 
-Le relais joue authorization server ET resource server — **pas de dépendance externe** (pas d'IdP tiers requis, pas de service d'auth externe). Fonctionne identique quel que soit l'hébergement choisi.
+The relay acts as both authorization server AND resource server — **no external dependency** (no third-party IdP required, no external auth service). Works identically regardless of the chosen hosting.
 
-### App ↔ pod : paire de clés + challenge-response
+### App ↔ pod: key pair + challenge-response
 
-Pas de token statique transmis à chaque appel.
+No static token sent on every call.
 
-- **Enrôlement (une fois)** : l'app génère une paire de clés dans l'Android Keystore (StrongBox/TEE si disponible, clé privée non-exportable). Un code d'enrôlement à usage unique, généré côté pod, associe la clé publique au device.
-- **Connexion (à chaque session)** : le pod envoie un nonce, l'app le signe avec sa clé privée, le pod vérifie la signature avec la clé publique enregistrée. Aucun secret ne transite en clair sur le fil.
-- **Révocation** : indépendante de l'auth OAuth — retrait de la clé publique côté pod, sans toucher aux tokens OAuth.
+- **Enrollment (once)**: the app generates a key pair in the Android Keystore (StrongBox/TEE when available, non-exportable private key). A single-use enrollment code, generated pod-side, links the public key to the device.
+- **Connection (every session)**: the pod sends a nonce, the app signs it with its private key, the pod verifies the signature against the registered public key. No secret ever travels in the clear.
+- **Revocation**: independent from OAuth auth — public key removal on the pod's side, without touching OAuth tokens.
 
-## Double verrou
+## Double lock
 
-Aucun outil de contrôle (`get_screen`, `get_ui_tree`, `device_action`, ...) n'est disponible sans les deux conditions réunies simultanément : session OAuth valide (quel que soit le client MCP) + app activée et authentifiée côté téléphone. L'app n'ouvre son canal que sur action manuelle ("Connecter"), jamais en tâche de fond permanente.
+No control tool (`get_screen`, `get_ui_tree`, `device_action`, ...) is available unless both conditions are met simultaneously: a valid OAuth session (regardless of MCP client) + the app enabled and authenticated on the phone's side. The app only opens its channel on manual action ("Connect"), never as a persistent background task.
 
-## App générique
+## Generic app
 
-L'APK n'a pas d'URL de service figée en dur — configurable au pairing / premier lancement. Un seul binaire, réutilisable.
+The APK has no service URL hardcoded — configurable at pairing / first launch. A single binary, reusable.
 
-## Contrôle réel du téléphone (existant, prouvé sur SURFAC²E)
+## Real phone control (existing, proven on SURFAC²E)
 
-- `AccessibilityService` — lecture de l'arbre UI de N'IMPORTE QUELLE app, injection tap/swipe/texte/touches (`dumpUi`, `tap`, `swipe`, `typeText`, `key`, `launchApp`)
-- `MediaProjection` — capture d'écran réelle (frames JPEG), service premier plan
-- **Capacitor seul (webview CDP) est insuffisant** pour ce niveau de contrôle — utile seulement pour inspecter SA PROPRE webview, pas l'OS ni les autres apps.
+- `AccessibilityService` — reads the UI tree of ANY app, injects tap/swipe/text/key events (`dumpUi`, `tap`, `swipe`, `typeText`, `key`, `launchApp`)
+- `MediaProjection` — real screenshot capture (JPEG frames), foreground service
+- **Capacitor alone (webview CDP) is insufficient** for this level of control — only useful for inspecting YOUR OWN webview, not the OS or other apps.
 
-Ces deux services système sont la partie déjà validée en conditions réelles (usage SURFAC²E) : à réutiliser/adapter, pas à réinventer. La couche qui change est l'authentification (voir ci-dessus).
+These two system services are the part already validated under real conditions (SURFAC²E usage): to reuse/adapt, not to reinvent. The layer that changes is authentication (see above).
 
-## Hébergement
+## Hosting
 
-Requis, quel que soit l'hébergement choisi : un process Python long-vivant, joignable en HTTPS public, capable d'installer les dépendances de `relais/requirements.txt`. Voir [`Dockerfile`](../Dockerfile) pour la version conteneurisée générique.
+Required, regardless of the chosen hosting: a long-lived Python process, reachable over public HTTPS, able to install `relais/requirements.txt`'s dependencies. See [`Dockerfile`](../Dockerfile) for the generic containerized version.
 
-Hébergement utilisé pendant le développement de ce projet (exemple, pas une contrainte) : pod SSPCloud, namespace `nic01asfr`, projet Onyxia `device-agent` — SDK Android installable directement dedans (`dl.google.com`, `maven.google.com`, `services.gradle.org`, `repo.maven.apache.org` joignables, 1 To RAM / 6,5 To disque disponibles), ce qui permettait de compiler l'APK dans le même environnement que le relais. Rien de tout ça n'est requis ailleurs — un VPS classique avec Docker suffit.
+Hosting used during this project's development (example, not a constraint): SSPCloud pod, `nic01asfr` namespace, `device-agent` Onyxia project — Android SDK installable directly inside it (`dl.google.com`, `maven.google.com`, `services.gradle.org`, `repo.maven.apache.org` reachable, 1 TB RAM / 6.5 TB disk available), which allowed building the APK in the same environment as the relay. None of this is required elsewhere — a regular VPS with Docker is enough.
 
-## Distribution de l'APK
+## APK distribution
 
-Une fois buildée, distribution par lien de téléchargement temporaire (`expose_public` sur le pod), désactivé (`unexpose_public`) juste après récupération par Nicolas — pas de canal permanent d'exposition du binaire, vu ce que l'app permet une fois installée.
+Once built, distributed via a temporary download link (`expose_public` on the pod), disabled (`unexpose_public`) right after retrieval — no permanent exposure channel for the binary, given what the app allows once installed.
 
-## Historique
+## History
 
-Ce repo succède à un projet local ("MCP apk", dossier `device-agent-relay/` + `android-device-agent/`) qui avait posé les mêmes fondations d'architecture (topologie sortante, AccessibilityService + MediaProjection) et servait déjà de référence — utilisé pour le développement du module capture 3D de SURFAC²E. Le relais Python y était validé fonctionnellement ; le Kotlin était un scaffold jamais compilé. Le code existant (`ControlService.kt`, `ScreenCaptureService.kt`, `BridgeClient.kt`, `MainActivity.kt`) reste à récupérer et adapter au nouveau modèle d'authentification (OAuth côté Claude, challenge-response côté app — le projet local utilisait un bearer token statique unique).
+This repo succeeds a local project ("MCP apk", `device-agent-relay/` + `android-device-agent/` folders) that had laid the same architectural foundations (outbound topology, AccessibilityService + MediaProjection) and already served as a reference — used for developing SURFAC²E's 3D capture module. The Python relay was functionally validated there; the Kotlin was scaffolding, never compiled. The existing code (`ControlService.kt`, `ScreenCaptureService.kt`, `BridgeClient.kt`, `MainActivity.kt`) still needed retrieving and adapting to the new authentication model (OAuth on Claude's side, challenge-response on the app's side — the local project used a single static bearer token).
 
 ## Backlog
 
-Tout le backlog initial est réalisé et validé en conditions réelles : relais OAuth 2.1/PKCE + Streamable HTTP, enrôlement + challenge-response, app Android complète (AccessibilityService + MediaProjection), déploiement pod SSPCloud, installateur dédié (contournement Restricted Settings sans ADB), Custom Connector claude.ai, validation bout-en-bout de `get_ui_tree`/`device_action`/`get_screen`.
+The entire initial backlog is done and validated under real conditions: OAuth 2.1/PKCE + Streamable HTTP relay, enrollment + challenge-response, complete Android app (AccessibilityService + MediaProjection), SSPCloud pod deployment, dedicated installer (Restricted Settings workaround without ADB), claude.ai Custom Connector, end-to-end validation of `get_ui_tree`/`device_action`/`get_screen`.
 
-Durcissements ajoutés en cours de route, au-delà du plan initial :
-- Rate-limiting par IP (5 tentatives/15min) sur les points d'entrée à secret devinable
-- Wake lock pendant la capture d'écran (évite les pertes de session liées à l'extinction d'écran)
-- Rapporteur de crash intégré (`Thread.UncaughtExceptionHandler` + `ApplicationExitInfo`, sans ADB)
-- `versionCode`/`versionName` dérivés de l'horodatage — un `versionCode` figé causait des mises à jour silencieusement sans effet
-- Canal de build `canary` (identifiant d'app distinct) pour tester une version à risque sans jamais toucher à la version stable installée
+Hardening added along the way, beyond the initial plan:
+- Per-IP rate-limiting on entry points with a guessable secret
+- Wake lock during screen capture (avoids session loss from the screen turning off)
+- Built-in crash reporter (`Thread.UncaughtExceptionHandler` + `ApplicationExitInfo`, no ADB needed)
+- `versionCode`/`versionName` derived from timestamp — a fixed `versionCode` caused silent, ineffective updates
+- `canary` build channel (distinct app identifier) to test a risky version without ever touching the installed stable version
 
-Reste ouvert :
-- [ ] Persistance du registre d'appareils côté relais (actuellement en mémoire — perdu à chaque redémarrage du process, oblige à ré-enrôler)
+Still open:
+- [ ] Persistence of the device registry on the relay side (currently in-memory — lost on every process restart, requiring re-enrollment)
